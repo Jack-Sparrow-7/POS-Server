@@ -43,6 +43,7 @@ Future<Response> _createStore(RequestContext context) async {
   final name = body['name'] as String;
   final email = body['email'] as String;
   final whatsappNumber = body['whatsappNumber'] as String?;
+  final onlineOrderingEnabled = body['onlineOrderingEnabled'] as bool? ?? true;
   final type = StoreType.values.byName(body['type'] as String);
 
   final merchant = context.read<Merchant>();
@@ -56,6 +57,8 @@ Future<Response> _createStore(RequestContext context) async {
         email: email,
         type: type,
         whatsappNumber: whatsappNumber,
+        isActive: true,
+        onlineOrderingEnabled: onlineOrderingEnabled,
         merchantId: merchant.id,
       ),
     );
@@ -69,6 +72,8 @@ Future<Response> _createStore(RequestContext context) async {
           'email': store.email,
           'whatsappNumber': store.whatsappNumber,
           'type': store.type.name,
+          'isActive': store.isActive,
+          'onlineOrderingEnabled': store.onlineOrderingEnabled,
           'createdAt': store.createdAt?.toIso8601String(),
           'updatedAt': store.updatedAt?.toIso8601String(),
         },

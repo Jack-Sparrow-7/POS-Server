@@ -68,6 +68,28 @@ final EntityDescriptor<Store, StorePartial> $StoreEntityDescriptor = () {
         isDeletedAt: false,
       ),
       ColumnDescriptor(
+        name: 'is_active',
+        propertyName: 'isActive',
+        type: ColumnType.boolean,
+        nullable: false,
+        unique: false,
+        isPrimaryKey: false,
+        autoIncrement: false,
+        uuid: false,
+        isDeletedAt: false,
+      ),
+      ColumnDescriptor(
+        name: 'online_ordering_enabled',
+        propertyName: 'onlineOrderingEnabled',
+        type: ColumnType.boolean,
+        nullable: false,
+        unique: false,
+        isPrimaryKey: false,
+        autoIncrement: false,
+        uuid: false,
+        isDeletedAt: false,
+      ),
+      ColumnDescriptor(
         name: 'created_at',
         propertyName: 'createdAt',
         type: ColumnType.dateTime,
@@ -88,6 +110,17 @@ final EntityDescriptor<Store, StorePartial> $StoreEntityDescriptor = () {
         autoIncrement: false,
         uuid: false,
         isDeletedAt: false,
+      ),
+      ColumnDescriptor(
+        name: 'deleted_at',
+        propertyName: 'deletedAt',
+        type: ColumnType.dateTime,
+        nullable: true,
+        unique: false,
+        isPrimaryKey: false,
+        autoIncrement: false,
+        uuid: false,
+        isDeletedAt: true,
       ),
     ],
     relations: const [
@@ -166,6 +199,12 @@ final EntityDescriptor<Store, StorePartial> $StoreEntityDescriptor = () {
       email: (row['email'] as String),
       whatsappNumber: (row['whatsapp_number'] as String?),
       type: StoreType.values.byName(row['type'] as String),
+      isActive: row['is_active'] is bool
+          ? row['is_active']
+          : row['is_active'] == 1,
+      onlineOrderingEnabled: row['online_ordering_enabled'] is bool
+          ? row['online_ordering_enabled']
+          : row['online_ordering_enabled'] == 1,
       createdAt: row['created_at'] == null
           ? null
           : row['created_at'] is String
@@ -176,6 +215,11 @@ final EntityDescriptor<Store, StorePartial> $StoreEntityDescriptor = () {
           : row['updated_at'] is String
           ? DateTime.parse(row['updated_at'].toString())
           : row['updated_at'] as DateTime,
+      deletedAt: row['deleted_at'] == null
+          ? null
+          : row['deleted_at'] is String
+          ? DateTime.parse(row['deleted_at'].toString())
+          : row['deleted_at'] as DateTime,
       merchant: null,
       terminals: const <Terminal>[],
       categories: const <Category>[],
@@ -188,8 +232,11 @@ final EntityDescriptor<Store, StorePartial> $StoreEntityDescriptor = () {
       'email': e.email,
       'whatsapp_number': e.whatsappNumber,
       'type': e.type.name,
+      'is_active': e.isActive,
+      'online_ordering_enabled': e.onlineOrderingEnabled,
       'created_at': e.createdAt?.toIso8601String(),
       'updated_at': e.updatedAt?.toIso8601String(),
+      'deleted_at': e.deletedAt?.toIso8601String(),
       'merchant_id': e.merchant?.id,
     },
     fieldsContext: const StoreFieldsContext(),
@@ -224,9 +271,16 @@ class StoreFieldsContext extends QueryFieldsContext<Store> {
 
   QueryField<StoreType> get type => field<StoreType>('type');
 
+  QueryField<bool> get isActive => field<bool>('is_active');
+
+  QueryField<bool> get onlineOrderingEnabled =>
+      field<bool>('online_ordering_enabled');
+
   QueryField<DateTime?> get createdAt => field<DateTime?>('created_at');
 
   QueryField<DateTime?> get updatedAt => field<DateTime?>('updated_at');
+
+  QueryField<DateTime?> get deletedAt => field<DateTime?>('deleted_at');
 
   QueryField<String?> get merchantId => field<String?>('merchant_id');
 
@@ -327,8 +381,11 @@ class StoreSelect extends SelectOptions<Store, StorePartial> {
     this.email = true,
     this.whatsappNumber = true,
     this.type = true,
+    this.isActive = true,
+    this.onlineOrderingEnabled = true,
     this.createdAt = true,
     this.updatedAt = true,
+    this.deletedAt = true,
     this.merchantId = true,
     this.relations,
   });
@@ -343,9 +400,15 @@ class StoreSelect extends SelectOptions<Store, StorePartial> {
 
   final bool type;
 
+  final bool isActive;
+
+  final bool onlineOrderingEnabled;
+
   final bool createdAt;
 
   final bool updatedAt;
+
+  final bool deletedAt;
 
   final bool merchantId;
 
@@ -358,8 +421,11 @@ class StoreSelect extends SelectOptions<Store, StorePartial> {
       email ||
       whatsappNumber ||
       type ||
+      isActive ||
+      onlineOrderingEnabled ||
       createdAt ||
       updatedAt ||
+      deletedAt ||
       merchantId ||
       (relations?.hasSelections ?? false);
 
@@ -373,8 +439,11 @@ class StoreSelect extends SelectOptions<Store, StorePartial> {
       email: email,
       whatsappNumber: whatsappNumber,
       type: type,
+      isActive: isActive,
+      onlineOrderingEnabled: onlineOrderingEnabled,
       createdAt: createdAt,
       updatedAt: updatedAt,
+      deletedAt: deletedAt,
       merchantId: merchantId,
       relations: relations as StoreRelations?,
     );
@@ -424,6 +493,24 @@ class StoreSelect extends SelectOptions<Store, StorePartial> {
         SelectField('type', tableAlias: tableAlias, alias: aliasFor('type')),
       );
     }
+    if (isActive) {
+      out.add(
+        SelectField(
+          'is_active',
+          tableAlias: tableAlias,
+          alias: aliasFor('is_active'),
+        ),
+      );
+    }
+    if (onlineOrderingEnabled) {
+      out.add(
+        SelectField(
+          'online_ordering_enabled',
+          tableAlias: tableAlias,
+          alias: aliasFor('online_ordering_enabled'),
+        ),
+      );
+    }
     if (createdAt) {
       out.add(
         SelectField(
@@ -439,6 +526,15 @@ class StoreSelect extends SelectOptions<Store, StorePartial> {
           'updated_at',
           tableAlias: tableAlias,
           alias: aliasFor('updated_at'),
+        ),
+      );
+    }
+    if (deletedAt) {
+      out.add(
+        SelectField(
+          'deleted_at',
+          tableAlias: tableAlias,
+          alias: aliasFor('deleted_at'),
         ),
       );
     }
@@ -483,6 +579,12 @@ class StoreSelect extends SelectOptions<Store, StorePartial> {
               readValue(row, 'type', path: path) as String,
             )
           : null,
+      isActive: isActive
+          ? readValue(row, 'is_active', path: path) as bool
+          : null,
+      onlineOrderingEnabled: onlineOrderingEnabled
+          ? readValue(row, 'online_ordering_enabled', path: path) as bool
+          : null,
       createdAt: createdAt
           ? readValue(row, 'created_at', path: path) == null
                 ? null
@@ -500,6 +602,15 @@ class StoreSelect extends SelectOptions<Store, StorePartial> {
                           readValue(row, 'updated_at', path: path) as String,
                         )
                       : readValue(row, 'updated_at', path: path) as DateTime)
+          : null,
+      deletedAt: deletedAt
+          ? readValue(row, 'deleted_at', path: path) == null
+                ? null
+                : (readValue(row, 'deleted_at', path: path) is String
+                      ? DateTime.parse(
+                          readValue(row, 'deleted_at', path: path) as String,
+                        )
+                      : readValue(row, 'deleted_at', path: path) as DateTime)
           : null,
       merchantId: merchantId
           ? readValue(row, 'merchant_id', path: path) as String?
@@ -613,8 +724,11 @@ class StoreSelect extends SelectOptions<Store, StorePartial> {
         email: base.email,
         whatsappNumber: base.whatsappNumber,
         type: base.type,
+        isActive: base.isActive,
+        onlineOrderingEnabled: base.onlineOrderingEnabled,
         createdAt: base.createdAt,
         updatedAt: base.updatedAt,
+        deletedAt: base.deletedAt,
         merchantId: base.merchantId,
         merchant: base.merchant,
         terminals: terminalsList,
@@ -714,8 +828,11 @@ class StorePartial extends PartialEntity<Store> {
     this.email,
     this.whatsappNumber,
     this.type,
+    this.isActive,
+    this.onlineOrderingEnabled,
     this.createdAt,
     this.updatedAt,
+    this.deletedAt,
     this.merchantId,
     this.merchant,
     this.terminals,
@@ -734,9 +851,15 @@ class StorePartial extends PartialEntity<Store> {
 
   final StoreType? type;
 
+  final bool? isActive;
+
+  final bool? onlineOrderingEnabled;
+
   final DateTime? createdAt;
 
   final DateTime? updatedAt;
+
+  final DateTime? deletedAt;
 
   final String? merchantId;
 
@@ -761,6 +884,8 @@ class StorePartial extends PartialEntity<Store> {
     if (name == null) missing.add('name');
     if (email == null) missing.add('email');
     if (type == null) missing.add('type');
+    if (isActive == null) missing.add('isActive');
+    if (onlineOrderingEnabled == null) missing.add('onlineOrderingEnabled');
     if (missing.isNotEmpty) {
       throw StateError(
         'Cannot convert StorePartial to StoreInsertDto: missing required fields: ${missing.join(', ')}',
@@ -771,8 +896,11 @@ class StorePartial extends PartialEntity<Store> {
       email: email!,
       whatsappNumber: whatsappNumber,
       type: type!,
+      isActive: isActive!,
+      onlineOrderingEnabled: onlineOrderingEnabled!,
       createdAt: createdAt,
       updatedAt: updatedAt,
+      deletedAt: deletedAt,
       merchantId: merchantId,
     );
   }
@@ -784,8 +912,11 @@ class StorePartial extends PartialEntity<Store> {
       email: email,
       whatsappNumber: whatsappNumber,
       type: type,
+      isActive: isActive,
+      onlineOrderingEnabled: onlineOrderingEnabled,
       createdAt: createdAt,
       updatedAt: updatedAt,
+      deletedAt: deletedAt,
       merchantId: merchantId,
     );
   }
@@ -797,6 +928,8 @@ class StorePartial extends PartialEntity<Store> {
     if (name == null) missing.add('name');
     if (email == null) missing.add('email');
     if (type == null) missing.add('type');
+    if (isActive == null) missing.add('isActive');
+    if (onlineOrderingEnabled == null) missing.add('onlineOrderingEnabled');
     if (missing.isNotEmpty) {
       throw StateError(
         'Cannot convert StorePartial to Store: missing required fields: ${missing.join(', ')}',
@@ -808,8 +941,11 @@ class StorePartial extends PartialEntity<Store> {
       email: email!,
       whatsappNumber: whatsappNumber,
       type: type!,
+      isActive: isActive!,
+      onlineOrderingEnabled: onlineOrderingEnabled!,
       createdAt: createdAt,
       updatedAt: updatedAt,
+      deletedAt: deletedAt,
       merchant: merchant?.toEntity(),
       terminals:
           terminals?.map((p) => p.toEntity()).toList() ?? const <Terminal>[],
@@ -830,8 +966,12 @@ class StorePartial extends PartialEntity<Store> {
       if (email != null) 'email': email,
       if (whatsappNumber != null) 'whatsappNumber': whatsappNumber,
       if (type != null) 'type': type?.name,
+      if (isActive != null) 'isActive': isActive,
+      if (onlineOrderingEnabled != null)
+        'onlineOrderingEnabled': onlineOrderingEnabled,
       if (createdAt != null) 'createdAt': createdAt?.toIso8601String(),
       if (updatedAt != null) 'updatedAt': updatedAt?.toIso8601String(),
+      if (deletedAt != null) 'deletedAt': deletedAt?.toIso8601String(),
       if (merchant != null) 'merchant': merchant?.toJson(),
       if (terminals != null)
         'terminals': terminals?.map((e) => e.toJson()).toList(),
@@ -852,8 +992,11 @@ class StoreInsertDto implements InsertDto<Store> {
     required this.email,
     this.whatsappNumber,
     required this.type,
+    required this.isActive,
+    required this.onlineOrderingEnabled,
     this.createdAt,
     this.updatedAt,
+    this.deletedAt,
     this.merchantId,
   });
 
@@ -865,9 +1008,15 @@ class StoreInsertDto implements InsertDto<Store> {
 
   final StoreType type;
 
+  final bool isActive;
+
+  final bool onlineOrderingEnabled;
+
   final DateTime? createdAt;
 
   final DateTime? updatedAt;
+
+  final DateTime? deletedAt;
 
   final String? merchantId;
 
@@ -878,8 +1027,13 @@ class StoreInsertDto implements InsertDto<Store> {
       'email': email,
       'whatsapp_number': whatsappNumber,
       'type': type.name,
+      'is_active': isActive,
+      'online_ordering_enabled': onlineOrderingEnabled,
       'created_at': DateTime.now().toIso8601String(),
       'updated_at': DateTime.now().toIso8601String(),
+      'deleted_at': deletedAt is DateTime
+          ? (deletedAt as DateTime).toIso8601String()
+          : deletedAt?.toString(),
       if (merchantId != null) 'merchant_id': merchantId,
     };
   }
@@ -893,8 +1047,11 @@ class StoreInsertDto implements InsertDto<Store> {
     String? email,
     String? whatsappNumber,
     StoreType? type,
+    bool? isActive,
+    bool? onlineOrderingEnabled,
     DateTime? createdAt,
     DateTime? updatedAt,
+    DateTime? deletedAt,
     String? merchantId,
   }) {
     return StoreInsertDto(
@@ -902,8 +1059,12 @@ class StoreInsertDto implements InsertDto<Store> {
       email: email ?? this.email,
       whatsappNumber: whatsappNumber ?? this.whatsappNumber,
       type: type ?? this.type,
+      isActive: isActive ?? this.isActive,
+      onlineOrderingEnabled:
+          onlineOrderingEnabled ?? this.onlineOrderingEnabled,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
       merchantId: merchantId ?? this.merchantId,
     );
   }
@@ -915,8 +1076,11 @@ class StoreUpdateDto implements UpdateDto<Store> {
     this.email,
     this.whatsappNumber,
     this.type,
+    this.isActive,
+    this.onlineOrderingEnabled,
     this.createdAt,
     this.updatedAt,
+    this.deletedAt,
     this.merchantId,
   });
 
@@ -928,9 +1092,15 @@ class StoreUpdateDto implements UpdateDto<Store> {
 
   final StoreType? type;
 
+  final bool? isActive;
+
+  final bool? onlineOrderingEnabled;
+
   final DateTime? createdAt;
 
   final DateTime? updatedAt;
+
+  final DateTime? deletedAt;
 
   final String? merchantId;
 
@@ -941,11 +1111,18 @@ class StoreUpdateDto implements UpdateDto<Store> {
       if (email != null) 'email': email,
       if (whatsappNumber != null) 'whatsapp_number': whatsappNumber,
       if (type != null) 'type': type?.name,
+      if (isActive != null) 'is_active': isActive,
+      if (onlineOrderingEnabled != null)
+        'online_ordering_enabled': onlineOrderingEnabled,
       if (createdAt != null)
         'created_at': createdAt is DateTime
             ? (createdAt as DateTime).toIso8601String()
             : createdAt?.toString(),
       'updated_at': DateTime.now().toIso8601String(),
+      if (deletedAt != null)
+        'deleted_at': deletedAt is DateTime
+            ? (deletedAt as DateTime).toIso8601String()
+            : deletedAt?.toString(),
       if (merchantId != null) 'merchant_id': merchantId,
     };
   }
@@ -972,8 +1149,11 @@ extension StoreJson on Store {
       'email': email,
       if (whatsappNumber != null) 'whatsappNumber': whatsappNumber,
       'type': type.name,
+      'isActive': isActive,
+      'onlineOrderingEnabled': onlineOrderingEnabled,
       if (createdAt != null) 'createdAt': createdAt?.toIso8601String(),
       if (updatedAt != null) 'updatedAt': updatedAt?.toIso8601String(),
+      if (deletedAt != null) 'deletedAt': deletedAt?.toIso8601String(),
       if (merchant != null) 'merchant': merchant?.toJson(),
       if (terminals != null)
         'terminals': terminals?.map((e) => e.toJson()).toList(),

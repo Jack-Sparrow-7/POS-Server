@@ -23,6 +23,9 @@ class Store extends Entity {
     required this.email,
     required this.type,
     this.whatsappNumber,
+    this.isActive = true,
+    this.onlineOrderingEnabled = true,
+    this.deletedAt,
     this.createdAt,
     this.updatedAt,
     this.merchant,
@@ -52,6 +55,14 @@ class Store extends Entity {
   @Column(type: ColumnType.text)
   final StoreType type;
 
+  /// Whether this store is active.
+  @Column()
+  bool isActive;
+
+  /// Whether customer online ordering is enabled for this store.
+  @Column()
+  bool onlineOrderingEnabled;
+
   /// Timestamp when the store record was created.
   @CreatedAt()
   DateTime? createdAt;
@@ -59,6 +70,10 @@ class Store extends Entity {
   /// Timestamp when the store record was last updated.
   @UpdatedAt()
   DateTime? updatedAt;
+
+  /// Timestamp when the store was soft-deleted.
+  @DeletedAt()
+  DateTime? deletedAt;
 
   /// Merchant that owns this store.
   @ManyToOne(on: Merchant)

@@ -220,6 +220,18 @@
           "nullable": false,
           "isPrimaryKey": false,
           "unique": false
+        },
+        "is_active": {
+          "type": "boolean",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "unique": false
+        },
+        "online_ordering_enabled": {
+          "type": "boolean",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "unique": false
         }
       }
     },

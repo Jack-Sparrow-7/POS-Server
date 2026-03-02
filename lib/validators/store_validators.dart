@@ -10,6 +10,7 @@ class StoreValidators {
     'name': string().min(3).max(100).toUpperCase(),
     'email': string().email(),
     'whatsappNumber': string().length(10).nullable(),
+    'onlineOrderingEnabled': boolean().nullable(),
     'type': string().toUpperCase().contained(
       StoreType.values.map((e) => e.name).toList(),
     ),
@@ -20,6 +21,8 @@ class StoreValidators {
     'name': string().min(3).max(100).toUpperCase().nullable(),
     'email': string().email().nullable(),
     'whatsappNumber': string().length(10).nullable(),
+    'isActive': boolean().nullable(),
+    'onlineOrderingEnabled': boolean().nullable(),
     'type': string()
         .toUpperCase()
         .contained(StoreType.values.map((e) => e.name).toList())

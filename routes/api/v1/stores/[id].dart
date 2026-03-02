@@ -57,6 +57,8 @@ Future<Response> _getStore(RequestContext context, String id) async {
           'email': store.email,
           'whatsappNumber': store.whatsappNumber,
           'type': store.type.name,
+          'isActive': store.isActive,
+          'onlineOrderingEnabled': store.onlineOrderingEnabled,
           'createdAt': store.createdAt?.toIso8601String(),
           'updatedAt': store.updatedAt?.toIso8601String(),
         },
@@ -105,8 +107,15 @@ Future<Response> _updateStore(RequestContext context, String id) async {
   final typeName = body['type'] as String?;
   final type = typeName != null ? StoreType.values.byName(typeName) : null;
   final whatsappNumber = body['whatsappNumber'] as String?;
+  final isActive = body['isActive'] as bool?;
+  final onlineOrderingEnabled = body['onlineOrderingEnabled'] as bool?;
 
-  if (name == null && email == null && type == null && whatsappNumber == null) {
+  if (name == null &&
+      email == null &&
+      type == null &&
+      whatsappNumber == null &&
+      isActive == null &&
+      onlineOrderingEnabled == null) {
     return Response.json(
       statusCode: HttpStatus.badRequest,
       body: {
@@ -149,6 +158,8 @@ Future<Response> _updateStore(RequestContext context, String id) async {
         email: email,
         whatsappNumber: whatsappNumber,
         type: type,
+        isActive: isActive,
+        onlineOrderingEnabled: onlineOrderingEnabled,
       ),
     );
     return Response.json(
@@ -160,6 +171,8 @@ Future<Response> _updateStore(RequestContext context, String id) async {
           'email': updatedStore.email,
           'whatsappNumber': updatedStore.whatsappNumber,
           'type': updatedStore.type.name,
+          'isActive': updatedStore.isActive,
+          'onlineOrderingEnabled': updatedStore.onlineOrderingEnabled,
           'createdAt': updatedStore.createdAt?.toIso8601String(),
           'updatedAt': updatedStore.updatedAt?.toIso8601String(),
         },
