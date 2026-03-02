@@ -9,11 +9,17 @@ class JwtService {
   static String generateToken({
     required String userId,
     required String type,
+    int? tokenVersion,
   }) {
-    final jwt = JWT({
+    final payload = <String, dynamic>{
       'sub': userId,
       'type': type,
-    });
+    };
+    if (tokenVersion != null) {
+      payload['tv'] = tokenVersion;
+    }
+
+    final jwt = JWT(payload);
 
     return jwt.sign(
       SecretKey(Env.jwtSecret),

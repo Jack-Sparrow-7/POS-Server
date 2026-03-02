@@ -1,5 +1,6 @@
 import 'package:loxia/loxia.dart';
 import 'package:pos_backend/models/store/store.dart';
+
 part 'merchant.g.dart';
 
 /// Represents a merchant account in the system.
@@ -13,6 +14,9 @@ class Merchant extends Entity {
     required this.mobileNumber,
     required this.email,
     required this.passwordHash,
+    this.isActive = true,
+    this.tokenVersion = 0,
+    this.deletedAt,
     this.stores = const [],
     this.createdAt,
     this.updatedAt,
@@ -42,6 +46,14 @@ class Merchant extends Entity {
   @Column()
   final String passwordHash;
 
+  /// Whether this merchant account is active.
+  @Column()
+  bool isActive;
+
+  /// JWT version for forced token invalidation.
+  @Column()
+  int tokenVersion;
+
   /// Stores associated with this merchant.
   @OneToMany(on: Store, mappedBy: 'merchant')
   final List<Store> stores;
@@ -53,6 +65,10 @@ class Merchant extends Entity {
   /// Timestamp when the merchant was last updated.
   @UpdatedAt()
   DateTime? updatedAt;
+
+  /// Timestamp when the merchant was soft-deleted.
+  @DeletedAt()
+  DateTime? deletedAt;
 
   /// Entity descriptor used by Loxia for metadata and query operations.
   static EntityDescriptor<Merchant, MerchantPartial> get entity =>

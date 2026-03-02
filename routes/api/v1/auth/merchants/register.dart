@@ -54,11 +54,14 @@ Future<Response> onRequest(RequestContext context) async {
         mobileNumber: mobileNumber,
         email: email,
         passwordHash: passwordHash,
+        isActive: true,
+        tokenVersion: 0,
       ),
     );
     final token = JwtService.generateToken(
       userId: merchant.id,
       type: 'merchant',
+      tokenVersion: merchant.tokenVersion,
     );
 
     final cookie = Cookie('access_token', token)
@@ -79,6 +82,8 @@ Future<Response> onRequest(RequestContext context) async {
           'businessName': merchant.businessName,
           'mobileNumber': merchant.mobileNumber,
           'email': merchant.email,
+          'isActive': merchant.isActive,
+          'tokenVersion': merchant.tokenVersion,
           'createdAt': merchant.createdAt?.toIso8601String(),
           'updatedAt': merchant.updatedAt?.toIso8601String(),
         },

@@ -1,0 +1,255 @@
+{
+  "version": "1.0",
+  "tables": {
+    "categories": {
+      "columns": {
+        "id": {
+          "type": "varchar",
+          "nullable": false,
+          "isPrimaryKey": true,
+          "unique": false
+        },
+        "name": {
+          "type": "varchar",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "unique": false
+        },
+        "description": {
+          "type": "varchar",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "unique": false
+        },
+        "image_url": {
+          "type": "varchar",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "unique": false
+        },
+        "is_active": {
+          "type": "boolean",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "unique": false
+        }
+      }
+    },
+    "counters": {
+      "columns": {
+        "id": {
+          "type": "varchar",
+          "nullable": false,
+          "isPrimaryKey": true,
+          "unique": false
+        },
+        "name": {
+          "type": "varchar",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "unique": false
+        },
+        "description": {
+          "type": "varchar",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "unique": false
+        },
+        "is_active": {
+          "type": "boolean",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "unique": false
+        }
+      }
+    },
+    "merchants": {
+      "columns": {
+        "id": {
+          "type": "varchar",
+          "nullable": false,
+          "isPrimaryKey": true,
+          "unique": false
+        },
+        "name": {
+          "type": "varchar",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "unique": false
+        },
+        "business_name": {
+          "type": "varchar",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "unique": false
+        },
+        "mobile_number": {
+          "type": "varchar",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "unique": true
+        },
+        "email": {
+          "type": "varchar",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "unique": true
+        },
+        "password_hash": {
+          "type": "varchar",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "unique": false
+        },
+        "is_active": {
+          "type": "boolean",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "unique": false
+        },
+        "token_version": {
+          "type": "int",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "unique": false
+        }
+      }
+    },
+    "products": {
+      "columns": {
+        "id": {
+          "type": "varchar",
+          "nullable": false,
+          "isPrimaryKey": true,
+          "unique": false
+        },
+        "name": {
+          "type": "varchar",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "unique": false
+        },
+        "description": {
+          "type": "varchar",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "unique": false
+        },
+        "base_price": {
+          "type": "int",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "unique": false
+        },
+        "selling_price": {
+          "type": "int",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "unique": false
+        },
+        "sku": {
+          "type": "varchar",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "unique": false
+        },
+        "image_url": {
+          "type": "varchar",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "unique": false
+        },
+        "is_active": {
+          "type": "boolean",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "unique": false
+        }
+      }
+    },
+    "stock": {
+      "columns": {
+        "id": {
+          "type": "varchar",
+          "nullable": false,
+          "isPrimaryKey": true,
+          "unique": false
+        },
+        "quantity": {
+          "type": "int",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "unique": false
+        },
+        "low_stock_threshold": {
+          "type": "int",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "unique": false
+        }
+      }
+    },
+    "stores": {
+      "columns": {
+        "id": {
+          "type": "varchar",
+          "nullable": false,
+          "isPrimaryKey": true,
+          "unique": false
+        },
+        "name": {
+          "type": "varchar",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "unique": false
+        },
+        "email": {
+          "type": "varchar",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "unique": false
+        },
+        "whatsapp_number": {
+          "type": "varchar",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "unique": false
+        },
+        "type": {
+          "type": "varchar",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "unique": false
+        }
+      }
+    },
+    "terminals": {
+      "columns": {
+        "id": {
+          "type": "varchar",
+          "nullable": false,
+          "isPrimaryKey": true,
+          "unique": false
+        },
+        "terminal_code": {
+          "type": "varchar",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "unique": true
+        },
+        "password_hash": {
+          "type": "varchar",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "unique": false
+        },
+        "name": {
+          "type": "varchar",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "unique": false
+        }
+      }
+    }
+  }
+}

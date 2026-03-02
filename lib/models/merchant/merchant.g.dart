@@ -80,6 +80,28 @@ final EntityDescriptor<Merchant, MerchantPartial> $MerchantEntityDescriptor =
             isDeletedAt: false,
           ),
           ColumnDescriptor(
+            name: 'is_active',
+            propertyName: 'isActive',
+            type: ColumnType.boolean,
+            nullable: false,
+            unique: false,
+            isPrimaryKey: false,
+            autoIncrement: false,
+            uuid: false,
+            isDeletedAt: false,
+          ),
+          ColumnDescriptor(
+            name: 'token_version',
+            propertyName: 'tokenVersion',
+            type: ColumnType.integer,
+            nullable: false,
+            unique: false,
+            isPrimaryKey: false,
+            autoIncrement: false,
+            uuid: false,
+            isDeletedAt: false,
+          ),
+          ColumnDescriptor(
             name: 'created_at',
             propertyName: 'createdAt',
             type: ColumnType.dateTime,
@@ -100,6 +122,17 @@ final EntityDescriptor<Merchant, MerchantPartial> $MerchantEntityDescriptor =
             autoIncrement: false,
             uuid: false,
             isDeletedAt: false,
+          ),
+          ColumnDescriptor(
+            name: 'deleted_at',
+            propertyName: 'deletedAt',
+            type: ColumnType.dateTime,
+            nullable: true,
+            unique: false,
+            isPrimaryKey: false,
+            autoIncrement: false,
+            uuid: false,
+            isDeletedAt: true,
           ),
         ],
         relations: const [
@@ -123,6 +156,10 @@ final EntityDescriptor<Merchant, MerchantPartial> $MerchantEntityDescriptor =
           mobileNumber: (row['mobile_number'] as String),
           email: (row['email'] as String),
           passwordHash: (row['password_hash'] as String),
+          isActive: row['is_active'] is bool
+              ? row['is_active']
+              : row['is_active'] == 1,
+          tokenVersion: (row['token_version'] as int),
           createdAt: row['created_at'] == null
               ? null
               : row['created_at'] is String
@@ -133,6 +170,11 @@ final EntityDescriptor<Merchant, MerchantPartial> $MerchantEntityDescriptor =
               : row['updated_at'] is String
               ? DateTime.parse(row['updated_at'].toString())
               : row['updated_at'] as DateTime,
+          deletedAt: row['deleted_at'] == null
+              ? null
+              : row['deleted_at'] is String
+              ? DateTime.parse(row['deleted_at'].toString())
+              : row['deleted_at'] as DateTime,
           stores: const <Store>[],
         ),
         toRow: (e) => {
@@ -142,8 +184,11 @@ final EntityDescriptor<Merchant, MerchantPartial> $MerchantEntityDescriptor =
           'mobile_number': e.mobileNumber,
           'email': e.email,
           'password_hash': e.passwordHash,
+          'is_active': e.isActive,
+          'token_version': e.tokenVersion,
           'created_at': e.createdAt?.toIso8601String(),
           'updated_at': e.updatedAt?.toIso8601String(),
+          'deleted_at': e.deletedAt?.toIso8601String(),
         },
         fieldsContext: const MerchantFieldsContext(),
         repositoryFactory: (EngineAdapter engine) => MerchantRepository(engine),
@@ -181,9 +226,15 @@ class MerchantFieldsContext extends QueryFieldsContext<Merchant> {
 
   QueryField<String> get passwordHash => field<String>('password_hash');
 
+  QueryField<bool> get isActive => field<bool>('is_active');
+
+  QueryField<int> get tokenVersion => field<int>('token_version');
+
   QueryField<DateTime?> get createdAt => field<DateTime?>('created_at');
 
   QueryField<DateTime?> get updatedAt => field<DateTime?>('updated_at');
+
+  QueryField<DateTime?> get deletedAt => field<DateTime?>('deleted_at');
 
   /// Find the owning relation on the target entity to get join column info
   StoreFieldsContext get stores {
@@ -224,8 +275,11 @@ class MerchantSelect extends SelectOptions<Merchant, MerchantPartial> {
     this.mobileNumber = true,
     this.email = true,
     this.passwordHash = true,
+    this.isActive = true,
+    this.tokenVersion = true,
     this.createdAt = true,
     this.updatedAt = true,
+    this.deletedAt = true,
     this.relations,
   });
 
@@ -241,9 +295,15 @@ class MerchantSelect extends SelectOptions<Merchant, MerchantPartial> {
 
   final bool passwordHash;
 
+  final bool isActive;
+
+  final bool tokenVersion;
+
   final bool createdAt;
 
   final bool updatedAt;
+
+  final bool deletedAt;
 
   final MerchantRelations? relations;
 
@@ -255,8 +315,11 @@ class MerchantSelect extends SelectOptions<Merchant, MerchantPartial> {
       mobileNumber ||
       email ||
       passwordHash ||
+      isActive ||
+      tokenVersion ||
       createdAt ||
       updatedAt ||
+      deletedAt ||
       (relations?.hasSelections ?? false);
 
   @override
@@ -270,8 +333,11 @@ class MerchantSelect extends SelectOptions<Merchant, MerchantPartial> {
       mobileNumber: mobileNumber,
       email: email,
       passwordHash: passwordHash,
+      isActive: isActive,
+      tokenVersion: tokenVersion,
       createdAt: createdAt,
       updatedAt: updatedAt,
+      deletedAt: deletedAt,
       relations: relations as MerchantRelations?,
     );
   }
@@ -333,6 +399,24 @@ class MerchantSelect extends SelectOptions<Merchant, MerchantPartial> {
         ),
       );
     }
+    if (isActive) {
+      out.add(
+        SelectField(
+          'is_active',
+          tableAlias: tableAlias,
+          alias: aliasFor('is_active'),
+        ),
+      );
+    }
+    if (tokenVersion) {
+      out.add(
+        SelectField(
+          'token_version',
+          tableAlias: tableAlias,
+          alias: aliasFor('token_version'),
+        ),
+      );
+    }
     if (createdAt) {
       out.add(
         SelectField(
@@ -348,6 +432,15 @@ class MerchantSelect extends SelectOptions<Merchant, MerchantPartial> {
           'updated_at',
           tableAlias: tableAlias,
           alias: aliasFor('updated_at'),
+        ),
+      );
+    }
+    if (deletedAt) {
+      out.add(
+        SelectField(
+          'deleted_at',
+          tableAlias: tableAlias,
+          alias: aliasFor('deleted_at'),
         ),
       );
     }
@@ -373,6 +466,12 @@ class MerchantSelect extends SelectOptions<Merchant, MerchantPartial> {
       passwordHash: passwordHash
           ? readValue(row, 'password_hash', path: path) as String
           : null,
+      isActive: isActive
+          ? readValue(row, 'is_active', path: path) as bool
+          : null,
+      tokenVersion: tokenVersion
+          ? readValue(row, 'token_version', path: path) as int
+          : null,
       createdAt: createdAt
           ? readValue(row, 'created_at', path: path) == null
                 ? null
@@ -390,6 +489,15 @@ class MerchantSelect extends SelectOptions<Merchant, MerchantPartial> {
                           readValue(row, 'updated_at', path: path) as String,
                         )
                       : readValue(row, 'updated_at', path: path) as DateTime)
+          : null,
+      deletedAt: deletedAt
+          ? readValue(row, 'deleted_at', path: path) == null
+                ? null
+                : (readValue(row, 'deleted_at', path: path) is String
+                      ? DateTime.parse(
+                          readValue(row, 'deleted_at', path: path) as String,
+                        )
+                      : readValue(row, 'deleted_at', path: path) as DateTime)
           : null,
       stores: null,
     );
@@ -441,8 +549,11 @@ class MerchantSelect extends SelectOptions<Merchant, MerchantPartial> {
         mobileNumber: base.mobileNumber,
         email: base.email,
         passwordHash: base.passwordHash,
+        isActive: base.isActive,
+        tokenVersion: base.tokenVersion,
         createdAt: base.createdAt,
         updatedAt: base.updatedAt,
+        deletedAt: base.deletedAt,
         stores: storesList,
       );
     }).toList();
@@ -489,8 +600,11 @@ class MerchantPartial extends PartialEntity<Merchant> {
     this.mobileNumber,
     this.email,
     this.passwordHash,
+    this.isActive,
+    this.tokenVersion,
     this.createdAt,
     this.updatedAt,
+    this.deletedAt,
     this.stores,
   });
 
@@ -506,9 +620,15 @@ class MerchantPartial extends PartialEntity<Merchant> {
 
   final String? passwordHash;
 
+  final bool? isActive;
+
+  final int? tokenVersion;
+
   final DateTime? createdAt;
 
   final DateTime? updatedAt;
+
+  final DateTime? deletedAt;
 
   final List<StorePartial>? stores;
 
@@ -525,6 +645,8 @@ class MerchantPartial extends PartialEntity<Merchant> {
     if (mobileNumber == null) missing.add('mobileNumber');
     if (email == null) missing.add('email');
     if (passwordHash == null) missing.add('passwordHash');
+    if (isActive == null) missing.add('isActive');
+    if (tokenVersion == null) missing.add('tokenVersion');
     if (missing.isNotEmpty) {
       throw StateError(
         'Cannot convert MerchantPartial to MerchantInsertDto: missing required fields: ${missing.join(', ')}',
@@ -536,8 +658,11 @@ class MerchantPartial extends PartialEntity<Merchant> {
       mobileNumber: mobileNumber!,
       email: email!,
       passwordHash: passwordHash!,
+      isActive: isActive!,
+      tokenVersion: tokenVersion!,
       createdAt: createdAt,
       updatedAt: updatedAt,
+      deletedAt: deletedAt,
     );
   }
 
@@ -549,8 +674,11 @@ class MerchantPartial extends PartialEntity<Merchant> {
       mobileNumber: mobileNumber,
       email: email,
       passwordHash: passwordHash,
+      isActive: isActive,
+      tokenVersion: tokenVersion,
       createdAt: createdAt,
       updatedAt: updatedAt,
+      deletedAt: deletedAt,
     );
   }
 
@@ -563,6 +691,8 @@ class MerchantPartial extends PartialEntity<Merchant> {
     if (mobileNumber == null) missing.add('mobileNumber');
     if (email == null) missing.add('email');
     if (passwordHash == null) missing.add('passwordHash');
+    if (isActive == null) missing.add('isActive');
+    if (tokenVersion == null) missing.add('tokenVersion');
     if (missing.isNotEmpty) {
       throw StateError(
         'Cannot convert MerchantPartial to Merchant: missing required fields: ${missing.join(', ')}',
@@ -575,8 +705,11 @@ class MerchantPartial extends PartialEntity<Merchant> {
       mobileNumber: mobileNumber!,
       email: email!,
       passwordHash: passwordHash!,
+      isActive: isActive!,
+      tokenVersion: tokenVersion!,
       createdAt: createdAt,
       updatedAt: updatedAt,
+      deletedAt: deletedAt,
       stores: stores?.map((p) => p.toEntity()).toList() ?? const <Store>[],
     );
   }
@@ -590,8 +723,11 @@ class MerchantPartial extends PartialEntity<Merchant> {
       if (mobileNumber != null) 'mobileNumber': mobileNumber,
       if (email != null) 'email': email,
       if (passwordHash != null) 'passwordHash': passwordHash,
+      if (isActive != null) 'isActive': isActive,
+      if (tokenVersion != null) 'tokenVersion': tokenVersion,
       if (createdAt != null) 'createdAt': createdAt?.toIso8601String(),
       if (updatedAt != null) 'updatedAt': updatedAt?.toIso8601String(),
+      if (deletedAt != null) 'deletedAt': deletedAt?.toIso8601String(),
       if (stores != null) 'stores': stores?.map((e) => e.toJson()).toList(),
     };
   }
@@ -604,8 +740,11 @@ class MerchantInsertDto implements InsertDto<Merchant> {
     required this.mobileNumber,
     required this.email,
     required this.passwordHash,
+    required this.isActive,
+    required this.tokenVersion,
     this.createdAt,
     this.updatedAt,
+    this.deletedAt,
   });
 
   final String name;
@@ -618,9 +757,15 @@ class MerchantInsertDto implements InsertDto<Merchant> {
 
   final String passwordHash;
 
+  final bool isActive;
+
+  final int tokenVersion;
+
   final DateTime? createdAt;
 
   final DateTime? updatedAt;
+
+  final DateTime? deletedAt;
 
   @override
   Map<String, dynamic> toMap() {
@@ -630,8 +775,13 @@ class MerchantInsertDto implements InsertDto<Merchant> {
       'mobile_number': mobileNumber,
       'email': email,
       'password_hash': passwordHash,
+      'is_active': isActive,
+      'token_version': tokenVersion,
       'created_at': DateTime.now().toIso8601String(),
       'updated_at': DateTime.now().toIso8601String(),
+      'deleted_at': deletedAt is DateTime
+          ? (deletedAt as DateTime).toIso8601String()
+          : deletedAt?.toString(),
     };
   }
 
@@ -645,8 +795,11 @@ class MerchantInsertDto implements InsertDto<Merchant> {
     String? mobileNumber,
     String? email,
     String? passwordHash,
+    bool? isActive,
+    int? tokenVersion,
     DateTime? createdAt,
     DateTime? updatedAt,
+    DateTime? deletedAt,
   }) {
     return MerchantInsertDto(
       name: name ?? this.name,
@@ -654,8 +807,11 @@ class MerchantInsertDto implements InsertDto<Merchant> {
       mobileNumber: mobileNumber ?? this.mobileNumber,
       email: email ?? this.email,
       passwordHash: passwordHash ?? this.passwordHash,
+      isActive: isActive ?? this.isActive,
+      tokenVersion: tokenVersion ?? this.tokenVersion,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
     );
   }
 }
@@ -667,8 +823,11 @@ class MerchantUpdateDto implements UpdateDto<Merchant> {
     this.mobileNumber,
     this.email,
     this.passwordHash,
+    this.isActive,
+    this.tokenVersion,
     this.createdAt,
     this.updatedAt,
+    this.deletedAt,
   });
 
   final String? name;
@@ -681,9 +840,15 @@ class MerchantUpdateDto implements UpdateDto<Merchant> {
 
   final String? passwordHash;
 
+  final bool? isActive;
+
+  final int? tokenVersion;
+
   final DateTime? createdAt;
 
   final DateTime? updatedAt;
+
+  final DateTime? deletedAt;
 
   @override
   Map<String, dynamic> toMap() {
@@ -693,11 +858,17 @@ class MerchantUpdateDto implements UpdateDto<Merchant> {
       if (mobileNumber != null) 'mobile_number': mobileNumber,
       if (email != null) 'email': email,
       if (passwordHash != null) 'password_hash': passwordHash,
+      if (isActive != null) 'is_active': isActive,
+      if (tokenVersion != null) 'token_version': tokenVersion,
       if (createdAt != null)
         'created_at': createdAt is DateTime
             ? (createdAt as DateTime).toIso8601String()
             : createdAt?.toString(),
       'updated_at': DateTime.now().toIso8601String(),
+      if (deletedAt != null)
+        'deleted_at': deletedAt is DateTime
+            ? (deletedAt as DateTime).toIso8601String()
+            : deletedAt?.toString(),
     };
   }
 
@@ -724,8 +895,11 @@ extension MerchantJson on Merchant {
       'mobileNumber': mobileNumber,
       'email': email,
       'passwordHash': passwordHash,
+      'isActive': isActive,
+      'tokenVersion': tokenVersion,
       if (createdAt != null) 'createdAt': createdAt?.toIso8601String(),
       if (updatedAt != null) 'updatedAt': updatedAt?.toIso8601String(),
+      if (deletedAt != null) 'deletedAt': deletedAt?.toIso8601String(),
       if (stores != null) 'stores': stores?.map((e) => e.toJson()).toList(),
     };
   }

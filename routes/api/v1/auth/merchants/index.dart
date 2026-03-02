@@ -3,7 +3,9 @@ import 'dart:io';
 import 'package:bcrypt/bcrypt.dart';
 import 'package:dart_frog/dart_frog.dart';
 import 'package:loxia/loxia.dart';
+import 'package:pos_backend/config/env.dart';
 import 'package:pos_backend/models/merchant/merchant.dart';
+import 'package:pos_backend/services/jwt_service.dart';
 import 'package:pos_backend/utils/db_error_matcher.dart';
 import 'package:pos_backend/utils/json_body_parser.dart';
 import 'package:pos_backend/validators/merchant_validators.dart';
@@ -31,6 +33,8 @@ Future<Response> _getMerchant(RequestContext context) async {
         'businessName': merchant.businessName,
         'mobileNumber': merchant.mobileNumber,
         'email': merchant.email,
+        'isActive': merchant.isActive,
+        'tokenVersion': merchant.tokenVersion,
         'createdAt': merchant.createdAt?.toIso8601String(),
         'updatedAt': merchant.updatedAt?.toIso8601String(),
       },
@@ -65,6 +69,7 @@ Future<Response> _updateMerchant(RequestContext context) async {
   final passwordHash = password != null
       ? BCrypt.hashpw(password, BCrypt.gensalt())
       : null;
+  final shouldRotateToken = passwordHash != null;
 
   if (name == null &&
       businessName == null &&
@@ -92,9 +97,30 @@ Future<Response> _updateMerchant(RequestContext context) async {
         mobileNumber: mobileNumber,
         email: email,
         passwordHash: passwordHash,
+        tokenVersion: shouldRotateToken
+            ? merchant.tokenVersion + 1
+            : merchant.tokenVersion,
       ),
     );
+    
+    final headers = <String, String>{};
+    if (shouldRotateToken) {
+      final token = JwtService.generateToken(
+        userId: updatedMerchant.id,
+        type: 'merchant',
+        tokenVersion: updatedMerchant.tokenVersion,
+      );
+      final cookie = Cookie('access_token', token)
+        ..httpOnly = true
+        ..secure = Env.isProd
+        ..path = '/'
+        ..maxAge = Env.jwtExpiry.inSeconds
+        ..sameSite = SameSite.lax;
+      headers[HttpHeaders.setCookieHeader] = cookie.toString();
+    }
+
     return Response.json(
+      headers: headers,
       body: {
         'status': 'success',
         'user': {
@@ -103,6 +129,8 @@ Future<Response> _updateMerchant(RequestContext context) async {
           'businessName': updatedMerchant.businessName,
           'mobileNumber': updatedMerchant.mobileNumber,
           'email': updatedMerchant.email,
+          'isActive': updatedMerchant.isActive,
+          'tokenVersion': updatedMerchant.tokenVersion,
           'createdAt': updatedMerchant.createdAt?.toIso8601String(),
           'updatedAt': updatedMerchant.updatedAt?.toIso8601String(),
         },

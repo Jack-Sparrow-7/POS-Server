@@ -15,12 +15,23 @@ Future<Merchant?> _authenticateFromToken(
     final payload = JwtService.verifyToken(token: token);
     final type = payload['type'] as String?;
     final id = payload['sub'] as String?;
+    final tokenVersionClaim = payload['tv'];
+    final tokenVersion = switch (tokenVersionClaim) {
+      final int value => value,
+      final num value => value.toInt(),
+      _ => null,
+    };
     if (type != 'merchant' || id == null) return null;
 
     final merchants = context.read<DataSource>().getRepository<Merchant>();
-    return await merchants.findOneBy(
+    final merchant = await merchants.findOneBy(
       where: MerchantQuery((m) => m.id.equals(id)),
     );
+    if (merchant == null || !merchant.isActive) return null;
+    if (tokenVersion != null && tokenVersion != merchant.tokenVersion) {
+      return null;
+    }
+    return merchant;
   } on JWTException {
     return null;
   }

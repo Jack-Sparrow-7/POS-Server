@@ -53,7 +53,13 @@ Future<Response> onRequest(RequestContext context) async {
         body: {'status': 'error', 'message': 'Invalid email or password.'},
       );
     }
-
+    if (!merchant.isActive) {
+      return Response.json(
+        statusCode: HttpStatus.forbidden,
+        body: {'status': 'error', 'message': 'Merchant account is inactive.'},
+      );
+    }
+    
     final isPasswordValid = BCrypt.checkpw(password, merchant.passwordHash);
 
     if (!isPasswordValid) {
@@ -66,6 +72,7 @@ Future<Response> onRequest(RequestContext context) async {
     final token = JwtService.generateToken(
       type: 'merchant',
       userId: merchant.id,
+      tokenVersion: merchant.tokenVersion,
     );
 
     final cookie = Cookie('access_token', token)
@@ -84,6 +91,8 @@ Future<Response> onRequest(RequestContext context) async {
           'businessName': merchant.businessName,
           'mobileNumber': merchant.mobileNumber,
           'email': merchant.email,
+          'isActive': merchant.isActive,
+          'tokenVersion': merchant.tokenVersion,
           'createdAt': merchant.createdAt?.toIso8601String(),
           'updatedAt': merchant.updatedAt?.toIso8601String(),
         },
