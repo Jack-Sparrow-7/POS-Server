@@ -1,0 +1,7 @@
+include: package:dart_frog_lint/recommended.yaml
+
+analyzer:
+  errors:
+    constant_identifier_names: ignore
+  exclude:
+    - '**/*.g.dart'
