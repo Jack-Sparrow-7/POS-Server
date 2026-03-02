@@ -3,9 +3,9 @@ import 'dart:io';
 import 'package:bcrypt/bcrypt.dart';
 import 'package:dart_frog/dart_frog.dart';
 import 'package:loxia/loxia.dart';
-import 'package:pos_backend/config/env.dart';
 import 'package:pos_backend/models/merchant/merchant.dart';
 import 'package:pos_backend/services/jwt_service.dart';
+import 'package:pos_backend/utils/auth_cookies.dart';
 import 'package:pos_backend/utils/db_error_matcher.dart';
 import 'package:pos_backend/utils/json_body_parser.dart';
 import 'package:pos_backend/validators/merchant_validators.dart';
@@ -103,39 +103,44 @@ Future<Response> _updateMerchant(RequestContext context) async {
       ),
     );
     
-    final headers = <String, String>{};
+    final headers = <String, Object>{};
+    final responseBody = <String, dynamic>{
+      'status': 'success',
+      'user': {
+        'id': updatedMerchant.id,
+        'name': updatedMerchant.name,
+        'businessName': updatedMerchant.businessName,
+        'mobileNumber': updatedMerchant.mobileNumber,
+        'email': updatedMerchant.email,
+        'isActive': updatedMerchant.isActive,
+        'tokenVersion': updatedMerchant.tokenVersion,
+        'createdAt': updatedMerchant.createdAt?.toIso8601String(),
+        'updatedAt': updatedMerchant.updatedAt?.toIso8601String(),
+      },
+      'message': 'Merchant updated successfully.',
+    };
     if (shouldRotateToken) {
-      final token = JwtService.generateToken(
+      final token = JwtService.generateAccessToken(
         userId: updatedMerchant.id,
         type: 'merchant',
         tokenVersion: updatedMerchant.tokenVersion,
       );
-      final cookie = Cookie('access_token', token)
-        ..httpOnly = true
-        ..secure = Env.isProd
-        ..path = '/'
-        ..maxAge = Env.jwtExpiry.inSeconds
-        ..sameSite = SameSite.lax;
-      headers[HttpHeaders.setCookieHeader] = cookie.toString();
+      final refreshToken = JwtService.generateRefreshToken(
+        userId: updatedMerchant.id,
+        type: 'merchant',
+        tokenVersion: updatedMerchant.tokenVersion,
+      );
+      headers[HttpHeaders.setCookieHeader] = buildAuthSetCookieHeaders(
+        accessToken: token,
+        refreshToken: refreshToken,
+      );
+      responseBody['token'] = token;
+      responseBody['refreshToken'] = refreshToken;
     }
 
     return Response.json(
       headers: headers,
-      body: {
-        'status': 'success',
-        'user': {
-          'id': updatedMerchant.id,
-          'name': updatedMerchant.name,
-          'businessName': updatedMerchant.businessName,
-          'mobileNumber': updatedMerchant.mobileNumber,
-          'email': updatedMerchant.email,
-          'isActive': updatedMerchant.isActive,
-          'tokenVersion': updatedMerchant.tokenVersion,
-          'createdAt': updatedMerchant.createdAt?.toIso8601String(),
-          'updatedAt': updatedMerchant.updatedAt?.toIso8601String(),
-        },
-        'message': 'Merchant updated successfully.',
-      },
+      body: responseBody,
     );
   } on Exception catch (e) {
     if (hasDbConstraint(e, ['merchants_email_key'])) {

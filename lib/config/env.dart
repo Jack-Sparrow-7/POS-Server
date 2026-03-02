@@ -39,4 +39,11 @@ class Env {
 
   /// Default JWT token validity duration.
   static Duration jwtExpiry = const Duration(days: 7);
+
+  /// Refresh JWT token validity duration.
+  static Duration get refreshJwtExpiry {
+    final days = int.tryParse(_env['JWT_REFRESH_EXPIRY_DAYS'] ?? '');
+    if (days != null && days > 0) return Duration(days: days);
+    return const Duration(days: 30);
+  }
 }

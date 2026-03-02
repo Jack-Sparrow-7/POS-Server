@@ -3,9 +3,9 @@ import 'dart:io';
 import 'package:bcrypt/bcrypt.dart';
 import 'package:dart_frog/dart_frog.dart';
 import 'package:loxia/loxia.dart';
-import 'package:pos_backend/config/env.dart';
 import 'package:pos_backend/models/merchant/merchant.dart';
 import 'package:pos_backend/services/jwt_service.dart';
+import 'package:pos_backend/utils/auth_cookies.dart';
 import 'package:pos_backend/utils/json_body_parser.dart';
 import 'package:pos_backend/validators/merchant_validators.dart';
 
@@ -69,18 +69,21 @@ Future<Response> onRequest(RequestContext context) async {
       );
     }
 
-    final token = JwtService.generateToken(
+    final token = JwtService.generateAccessToken(
+      type: 'merchant',
+      userId: merchant.id,
+      tokenVersion: merchant.tokenVersion,
+    );
+    final refreshToken = JwtService.generateRefreshToken(
       type: 'merchant',
       userId: merchant.id,
       tokenVersion: merchant.tokenVersion,
     );
 
-    final cookie = Cookie('access_token', token)
-      ..httpOnly = true
-      ..secure = Env.isProd
-      ..path = '/'
-      ..maxAge = Env.jwtExpiry.inSeconds
-      ..sameSite = SameSite.lax;
+    final setCookieHeader = buildAuthSetCookieHeaders(
+      accessToken: token,
+      refreshToken: refreshToken,
+    );
 
     return Response.json(
       body: {
@@ -97,9 +100,10 @@ Future<Response> onRequest(RequestContext context) async {
           'updatedAt': merchant.updatedAt?.toIso8601String(),
         },
         'token': token,
+        'refreshToken': refreshToken,
         'message': 'Merchant logged in successfully.',
       },
-      headers: {HttpHeaders.setCookieHeader: cookie.toString()},
+      headers: {HttpHeaders.setCookieHeader: setCookieHeader},
     );
   } on Exception {
     return Response.json(

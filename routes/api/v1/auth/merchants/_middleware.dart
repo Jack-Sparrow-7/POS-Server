@@ -6,7 +6,9 @@ Handler middleware(Handler handler) {
     merchantAuthMiddleware(
       applies: (context) async {
         final path = context.request.uri.path;
-        return !(path.endsWith('/login') || path.endsWith('/register'));
+        return !(path.endsWith('/login') ||
+            path.endsWith('/register') ||
+            path.endsWith('/refresh'));
       },
     ),
   );

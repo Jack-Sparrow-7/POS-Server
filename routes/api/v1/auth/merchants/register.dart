@@ -3,9 +3,9 @@ import 'dart:io';
 import 'package:bcrypt/bcrypt.dart';
 import 'package:dart_frog/dart_frog.dart';
 import 'package:loxia/loxia.dart';
-import 'package:pos_backend/config/env.dart';
 import 'package:pos_backend/models/merchant/merchant.dart';
 import 'package:pos_backend/services/jwt_service.dart';
+import 'package:pos_backend/utils/auth_cookies.dart';
 import 'package:pos_backend/utils/db_error_matcher.dart';
 import 'package:pos_backend/utils/json_body_parser.dart';
 import 'package:pos_backend/validators/merchant_validators.dart';
@@ -58,24 +58,28 @@ Future<Response> onRequest(RequestContext context) async {
         tokenVersion: 0,
       ),
     );
-    final token = JwtService.generateToken(
+    final token = JwtService.generateAccessToken(
+      userId: merchant.id,
+      type: 'merchant',
+      tokenVersion: merchant.tokenVersion,
+    );
+    final refreshToken = JwtService.generateRefreshToken(
       userId: merchant.id,
       type: 'merchant',
       tokenVersion: merchant.tokenVersion,
     );
 
-    final cookie = Cookie('access_token', token)
-      ..httpOnly = true
-      ..secure = Env.isProd
-      ..path = '/'
-      ..maxAge = Env.jwtExpiry.inSeconds
-      ..sameSite = SameSite.lax;
+    final setCookieHeader = buildAuthSetCookieHeaders(
+      accessToken: token,
+      refreshToken: refreshToken,
+    );
 
     return Response.json(
       statusCode: HttpStatus.created,
       body: {
         'status': 'success',
         'token': token,
+        'refreshToken': refreshToken,
         'user': {
           'id': merchant.id,
           'name': merchant.name,
@@ -89,7 +93,7 @@ Future<Response> onRequest(RequestContext context) async {
         },
         'message': 'Merchant registered successfully.',
       },
-      headers: {HttpHeaders.setCookieHeader: cookie.toString()},
+      headers: {HttpHeaders.setCookieHeader: setCookieHeader},
     );
   } on Exception catch (e) {
     if (hasDbConstraint(e, ['merchants_email_key'])) {

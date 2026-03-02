@@ -19,6 +19,11 @@ class MerchantValidators {
     'password': string().min(6).max(128),
   });
 
+  /// Validation schema for merchant token refresh payloads.
+  static AcanthisMap<dynamic> get refreshSchema => object({
+    'refreshToken': string().min(10).nullable(),
+  });
+
   /// Validation schema for merchant profile update payloads.
   static AcanthisMap<dynamic> get updateSchema => object({
     'name': string().min(3).max(100).toUpperCase().nullable(),

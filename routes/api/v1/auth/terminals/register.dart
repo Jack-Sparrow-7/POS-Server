@@ -7,6 +7,7 @@ import 'package:pos_backend/models/merchant/merchant.dart';
 import 'package:pos_backend/models/store/store.dart';
 import 'package:pos_backend/models/terminal/terminal.dart';
 import 'package:pos_backend/services/jwt_service.dart';
+import 'package:pos_backend/utils/auth_cookies.dart';
 import 'package:pos_backend/utils/db_error_matcher.dart';
 import 'package:pos_backend/utils/generate_terminal_number.dart';
 import 'package:pos_backend/utils/json_body_parser.dart';
@@ -86,10 +87,19 @@ Future<Response> onRequest(RequestContext context) async {
           storeId: storeId,
         ),
       );
-      final token = JwtService.generateToken(
+      final token = JwtService.generateAccessToken(
         userId: terminal.id,
         type: 'terminal',
         tokenVersion: terminal.tokenVersion,
+      );
+      final refreshToken = JwtService.generateRefreshToken(
+        userId: terminal.id,
+        type: 'terminal',
+        tokenVersion: terminal.tokenVersion,
+      );
+      final setCookieHeader = buildAuthSetCookieHeaders(
+        accessToken: token,
+        refreshToken: refreshToken,
       );
 
       return Response.json(
@@ -97,6 +107,7 @@ Future<Response> onRequest(RequestContext context) async {
         body: {
           'status': 'success',
           'token': token,
+          'refreshToken': refreshToken,
           'user': {
             'id': terminal.id,
             'terminalCode': terminal.terminalCode,
@@ -108,6 +119,7 @@ Future<Response> onRequest(RequestContext context) async {
           },
           'message': 'Terminal created successfully.',
         },
+        headers: {HttpHeaders.setCookieHeader: setCookieHeader},
       );
     } on Exception catch (e) {
       if (hasDbConstraint(e, [

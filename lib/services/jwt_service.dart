@@ -9,11 +9,14 @@ class JwtService {
   static String generateToken({
     required String userId,
     required String type,
+    required String tokenKind,
+    required Duration expiresIn,
     int? tokenVersion,
   }) {
     final payload = <String, dynamic>{
       'sub': userId,
       'type': type,
+      'kind': tokenKind,
     };
     if (tokenVersion != null) {
       payload['tv'] = tokenVersion;
@@ -23,7 +26,37 @@ class JwtService {
 
     return jwt.sign(
       SecretKey(Env.jwtSecret),
+      expiresIn: expiresIn,
+    );
+  }
+
+  /// Generates a short-lived access token.
+  static String generateAccessToken({
+    required String userId,
+    required String type,
+    int? tokenVersion,
+  }) {
+    return generateToken(
+      userId: userId,
+      type: type,
+      tokenVersion: tokenVersion,
+      tokenKind: 'access',
       expiresIn: Env.jwtExpiry,
+    );
+  }
+
+  /// Generates a long-lived refresh token.
+  static String generateRefreshToken({
+    required String userId,
+    required String type,
+    int? tokenVersion,
+  }) {
+    return generateToken(
+      userId: userId,
+      type: type,
+      tokenVersion: tokenVersion,
+      tokenKind: 'refresh',
+      expiresIn: Env.refreshJwtExpiry,
     );
   }
 

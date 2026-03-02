@@ -14,7 +14,7 @@ Future<Response> onRequest(RequestContext context) async {
   return Response.json(
     body: {
       'status': 'success',
-      'message': 'Logged out successfully.',
+      'message': 'Terminal logged out successfully.',
     },
     headers: {HttpHeaders.setCookieHeader: buildClearAuthCookiesHeaders()},
   );

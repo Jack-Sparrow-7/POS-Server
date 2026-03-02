@@ -3,9 +3,9 @@ import 'dart:io';
 import 'package:bcrypt/bcrypt.dart';
 import 'package:dart_frog/dart_frog.dart';
 import 'package:loxia/loxia.dart';
-import 'package:pos_backend/config/env.dart';
 import 'package:pos_backend/models/terminal/terminal.dart';
 import 'package:pos_backend/services/jwt_service.dart';
+import 'package:pos_backend/utils/auth_cookies.dart';
 import 'package:pos_backend/utils/json_body_parser.dart';
 import 'package:pos_backend/validators/terminal_validators.dart';
 
@@ -75,18 +75,21 @@ Future<Response> onRequest(RequestContext context) async {
       );
     }
 
-    final token = JwtService.generateToken(
+    final token = JwtService.generateAccessToken(
+      userId: terminal.id,
+      type: 'terminal',
+      tokenVersion: terminal.tokenVersion,
+    );
+    final refreshToken = JwtService.generateRefreshToken(
       userId: terminal.id,
       type: 'terminal',
       tokenVersion: terminal.tokenVersion,
     );
 
-    final cookie = Cookie('access_token', token)
-      ..httpOnly = true
-      ..secure = Env.isProd
-      ..path = '/'
-      ..maxAge = Env.jwtExpiry.inSeconds
-      ..sameSite = SameSite.lax;
+    final setCookieHeader = buildAuthSetCookieHeaders(
+      accessToken: token,
+      refreshToken: refreshToken,
+    );
 
     return Response.json(
       body: {
@@ -101,9 +104,10 @@ Future<Response> onRequest(RequestContext context) async {
           'updatedAt': terminal.updatedAt?.toIso8601String(),
         },
         'token': token,
+        'refreshToken': refreshToken,
         'message': 'Terminal logged in successfully.',
       },
-      headers: {HttpHeaders.setCookieHeader: cookie.toString()},
+      headers: {HttpHeaders.setCookieHeader: setCookieHeader},
     );
   } on Exception {
     return Response.json(
