@@ -81,12 +81,15 @@ Future<Response> onRequest(RequestContext context) async {
           terminalCode: generateTerminalNumber(),
           passwordHash: passwordHash,
           name: name,
+          isActive: true,
+          tokenVersion: 0,
           storeId: storeId,
         ),
       );
       final token = JwtService.generateToken(
         userId: terminal.id,
         type: 'terminal',
+        tokenVersion: terminal.tokenVersion,
       );
 
       return Response.json(
@@ -98,8 +101,10 @@ Future<Response> onRequest(RequestContext context) async {
             'id': terminal.id,
             'terminalCode': terminal.terminalCode,
             'name': terminal.name,
+            'isActive': terminal.isActive,
+            'tokenVersion': terminal.tokenVersion,
             'createdAt': terminal.createdAt?.toIso8601String(),
-            'updatedAt': terminal.createdAt?.toIso8601String(),
+            'updatedAt': terminal.updatedAt?.toIso8601String(),
           },
           'message': 'Terminal created successfully.',
         },

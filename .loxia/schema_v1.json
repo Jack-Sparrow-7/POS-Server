@@ -260,6 +260,18 @@
           "nullable": false,
           "isPrimaryKey": false,
           "unique": false
+        },
+        "is_active": {
+          "type": "boolean",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "unique": false
+        },
+        "token_version": {
+          "type": "int",
+          "nullable": false,
+          "isPrimaryKey": false,
+          "unique": false
         }
       }
     }

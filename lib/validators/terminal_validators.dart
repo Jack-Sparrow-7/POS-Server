@@ -21,5 +21,6 @@ class TerminalValidators {
   static AcanthisMap<dynamic> get updateSchema => object({
     'name': string().min(3).max(100).toUpperCase().nullable(),
     'password': string().min(6).max(128).nullable(),
+    'isActive': boolean().nullable(),
   });
 }

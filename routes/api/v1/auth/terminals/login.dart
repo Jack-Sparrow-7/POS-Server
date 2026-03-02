@@ -56,6 +56,12 @@ Future<Response> onRequest(RequestContext context) async {
         },
       );
     }
+    if (!terminal.isActive) {
+      return Response.json(
+        statusCode: HttpStatus.forbidden,
+        body: {'status': 'error', 'message': 'Terminal is inactive.'},
+      );
+    }
 
     final isPasswordValid = BCrypt.checkpw(password, terminal.passwordHash);
 
@@ -72,6 +78,7 @@ Future<Response> onRequest(RequestContext context) async {
     final token = JwtService.generateToken(
       userId: terminal.id,
       type: 'terminal',
+      tokenVersion: terminal.tokenVersion,
     );
 
     final cookie = Cookie('access_token', token)
@@ -88,8 +95,10 @@ Future<Response> onRequest(RequestContext context) async {
           'id': terminal.id,
           'terminalCode': terminal.terminalCode,
           'name': terminal.name,
+          'isActive': terminal.isActive,
+          'tokenVersion': terminal.tokenVersion,
           'createdAt': terminal.createdAt?.toIso8601String(),
-          'updatedAt': terminal.createdAt?.toIso8601String(),
+          'updatedAt': terminal.updatedAt?.toIso8601String(),
         },
         'token': token,
         'message': 'Terminal logged in successfully.',

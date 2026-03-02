@@ -4,8 +4,8 @@ import 'package:pos_backend/models/store/store.dart';
 part 'terminal.g.dart';
 
 /// Represents a payment terminal assigned to a merchant.
-@EntityMeta(table: 'terminals',uniqueConstraints: [
-  UniqueConstraint(columns: ['name','store_id'])
+@EntityMeta(table: 'terminals', uniqueConstraints: [
+  UniqueConstraint(columns: ['name', 'store_id']),
 ])
 class Terminal extends Entity {
   /// Creates a terminal record.
@@ -14,8 +14,11 @@ class Terminal extends Entity {
     required this.terminalCode,
     required this.passwordHash,
     required this.name,
+    this.isActive = true,
+    this.tokenVersion = 0,
     this.createdAt,
     this.updatedAt,
+    this.deletedAt,
     this.store,
   });
 
@@ -35,6 +38,14 @@ class Terminal extends Entity {
   @Column()
   final String name;
 
+  /// Whether this terminal can authenticate and operate.
+  @Column()
+  bool isActive;
+
+  /// JWT version for forced token invalidation.
+  @Column()
+  int tokenVersion;
+
   /// Timestamp when the terminal was created.
   @CreatedAt()
   DateTime? createdAt;
@@ -42,6 +53,10 @@ class Terminal extends Entity {
   /// Timestamp when the terminal was last updated.
   @UpdatedAt()
   DateTime? updatedAt;
+
+  /// Timestamp when the terminal was soft-deleted.
+  @DeletedAt()
+  DateTime? deletedAt;
 
   /// Store owns this terminal
   @ManyToOne(on: Store)

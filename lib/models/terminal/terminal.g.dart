@@ -58,6 +58,28 @@ final EntityDescriptor<Terminal, TerminalPartial> $TerminalEntityDescriptor =
             isDeletedAt: false,
           ),
           ColumnDescriptor(
+            name: 'is_active',
+            propertyName: 'isActive',
+            type: ColumnType.boolean,
+            nullable: false,
+            unique: false,
+            isPrimaryKey: false,
+            autoIncrement: false,
+            uuid: false,
+            isDeletedAt: false,
+          ),
+          ColumnDescriptor(
+            name: 'token_version',
+            propertyName: 'tokenVersion',
+            type: ColumnType.integer,
+            nullable: false,
+            unique: false,
+            isPrimaryKey: false,
+            autoIncrement: false,
+            uuid: false,
+            isDeletedAt: false,
+          ),
+          ColumnDescriptor(
             name: 'created_at',
             propertyName: 'createdAt',
             type: ColumnType.dateTime,
@@ -78,6 +100,17 @@ final EntityDescriptor<Terminal, TerminalPartial> $TerminalEntityDescriptor =
             autoIncrement: false,
             uuid: false,
             isDeletedAt: false,
+          ),
+          ColumnDescriptor(
+            name: 'deleted_at',
+            propertyName: 'deletedAt',
+            type: ColumnType.dateTime,
+            nullable: true,
+            unique: false,
+            isPrimaryKey: false,
+            autoIncrement: false,
+            uuid: false,
+            isDeletedAt: true,
           ),
         ],
         relations: const [
@@ -107,6 +140,10 @@ final EntityDescriptor<Terminal, TerminalPartial> $TerminalEntityDescriptor =
           terminalCode: (row['terminal_code'] as String),
           passwordHash: (row['password_hash'] as String),
           name: (row['name'] as String),
+          isActive: row['is_active'] is bool
+              ? row['is_active']
+              : row['is_active'] == 1,
+          tokenVersion: (row['token_version'] as int),
           createdAt: row['created_at'] == null
               ? null
               : row['created_at'] is String
@@ -117,6 +154,11 @@ final EntityDescriptor<Terminal, TerminalPartial> $TerminalEntityDescriptor =
               : row['updated_at'] is String
               ? DateTime.parse(row['updated_at'].toString())
               : row['updated_at'] as DateTime,
+          deletedAt: row['deleted_at'] == null
+              ? null
+              : row['deleted_at'] is String
+              ? DateTime.parse(row['deleted_at'].toString())
+              : row['deleted_at'] as DateTime,
           store: null,
         ),
         toRow: (e) => {
@@ -124,8 +166,11 @@ final EntityDescriptor<Terminal, TerminalPartial> $TerminalEntityDescriptor =
           'terminal_code': e.terminalCode,
           'password_hash': e.passwordHash,
           'name': e.name,
+          'is_active': e.isActive,
+          'token_version': e.tokenVersion,
           'created_at': e.createdAt?.toIso8601String(),
           'updated_at': e.updatedAt?.toIso8601String(),
+          'deleted_at': e.deletedAt?.toIso8601String(),
           'store_id': e.store?.id,
         },
         fieldsContext: const TerminalFieldsContext(),
@@ -160,9 +205,15 @@ class TerminalFieldsContext extends QueryFieldsContext<Terminal> {
 
   QueryField<String> get name => field<String>('name');
 
+  QueryField<bool> get isActive => field<bool>('is_active');
+
+  QueryField<int> get tokenVersion => field<int>('token_version');
+
   QueryField<DateTime?> get createdAt => field<DateTime?>('created_at');
 
   QueryField<DateTime?> get updatedAt => field<DateTime?>('updated_at');
+
+  QueryField<DateTime?> get deletedAt => field<DateTime?>('deleted_at');
 
   QueryField<String?> get storeId => field<String?>('store_id');
 
@@ -198,8 +249,11 @@ class TerminalSelect extends SelectOptions<Terminal, TerminalPartial> {
     this.terminalCode = true,
     this.passwordHash = true,
     this.name = true,
+    this.isActive = true,
+    this.tokenVersion = true,
     this.createdAt = true,
     this.updatedAt = true,
+    this.deletedAt = true,
     this.storeId = true,
     this.relations,
   });
@@ -212,9 +266,15 @@ class TerminalSelect extends SelectOptions<Terminal, TerminalPartial> {
 
   final bool name;
 
+  final bool isActive;
+
+  final bool tokenVersion;
+
   final bool createdAt;
 
   final bool updatedAt;
+
+  final bool deletedAt;
 
   final bool storeId;
 
@@ -226,8 +286,11 @@ class TerminalSelect extends SelectOptions<Terminal, TerminalPartial> {
       terminalCode ||
       passwordHash ||
       name ||
+      isActive ||
+      tokenVersion ||
       createdAt ||
       updatedAt ||
+      deletedAt ||
       storeId ||
       (relations?.hasSelections ?? false);
 
@@ -240,8 +303,11 @@ class TerminalSelect extends SelectOptions<Terminal, TerminalPartial> {
       terminalCode: terminalCode,
       passwordHash: passwordHash,
       name: name,
+      isActive: isActive,
+      tokenVersion: tokenVersion,
       createdAt: createdAt,
       updatedAt: updatedAt,
+      deletedAt: deletedAt,
       storeId: storeId,
       relations: relations as TerminalRelations?,
     );
@@ -290,6 +356,24 @@ class TerminalSelect extends SelectOptions<Terminal, TerminalPartial> {
         SelectField('name', tableAlias: tableAlias, alias: aliasFor('name')),
       );
     }
+    if (isActive) {
+      out.add(
+        SelectField(
+          'is_active',
+          tableAlias: tableAlias,
+          alias: aliasFor('is_active'),
+        ),
+      );
+    }
+    if (tokenVersion) {
+      out.add(
+        SelectField(
+          'token_version',
+          tableAlias: tableAlias,
+          alias: aliasFor('token_version'),
+        ),
+      );
+    }
     if (createdAt) {
       out.add(
         SelectField(
@@ -305,6 +389,15 @@ class TerminalSelect extends SelectOptions<Terminal, TerminalPartial> {
           'updated_at',
           tableAlias: tableAlias,
           alias: aliasFor('updated_at'),
+        ),
+      );
+    }
+    if (deletedAt) {
+      out.add(
+        SelectField(
+          'deleted_at',
+          tableAlias: tableAlias,
+          alias: aliasFor('deleted_at'),
         ),
       );
     }
@@ -339,6 +432,12 @@ class TerminalSelect extends SelectOptions<Terminal, TerminalPartial> {
           ? readValue(row, 'password_hash', path: path) as String
           : null,
       name: name ? readValue(row, 'name', path: path) as String : null,
+      isActive: isActive
+          ? readValue(row, 'is_active', path: path) as bool
+          : null,
+      tokenVersion: tokenVersion
+          ? readValue(row, 'token_version', path: path) as int
+          : null,
       createdAt: createdAt
           ? readValue(row, 'created_at', path: path) == null
                 ? null
@@ -356,6 +455,15 @@ class TerminalSelect extends SelectOptions<Terminal, TerminalPartial> {
                           readValue(row, 'updated_at', path: path) as String,
                         )
                       : readValue(row, 'updated_at', path: path) as DateTime)
+          : null,
+      deletedAt: deletedAt
+          ? readValue(row, 'deleted_at', path: path) == null
+                ? null
+                : (readValue(row, 'deleted_at', path: path) is String
+                      ? DateTime.parse(
+                          readValue(row, 'deleted_at', path: path) as String,
+                        )
+                      : readValue(row, 'deleted_at', path: path) as DateTime)
           : null,
       storeId: storeId
           ? readValue(row, 'store_id', path: path) as String?
@@ -409,8 +517,11 @@ class TerminalPartial extends PartialEntity<Terminal> {
     this.terminalCode,
     this.passwordHash,
     this.name,
+    this.isActive,
+    this.tokenVersion,
     this.createdAt,
     this.updatedAt,
+    this.deletedAt,
     this.storeId,
     this.store,
   });
@@ -423,9 +534,15 @@ class TerminalPartial extends PartialEntity<Terminal> {
 
   final String? name;
 
+  final bool? isActive;
+
+  final int? tokenVersion;
+
   final DateTime? createdAt;
 
   final DateTime? updatedAt;
+
+  final DateTime? deletedAt;
 
   final String? storeId;
 
@@ -442,6 +559,8 @@ class TerminalPartial extends PartialEntity<Terminal> {
     if (terminalCode == null) missing.add('terminalCode');
     if (passwordHash == null) missing.add('passwordHash');
     if (name == null) missing.add('name');
+    if (isActive == null) missing.add('isActive');
+    if (tokenVersion == null) missing.add('tokenVersion');
     if (missing.isNotEmpty) {
       throw StateError(
         'Cannot convert TerminalPartial to TerminalInsertDto: missing required fields: ${missing.join(', ')}',
@@ -451,8 +570,11 @@ class TerminalPartial extends PartialEntity<Terminal> {
       terminalCode: terminalCode!,
       passwordHash: passwordHash!,
       name: name!,
+      isActive: isActive!,
+      tokenVersion: tokenVersion!,
       createdAt: createdAt,
       updatedAt: updatedAt,
+      deletedAt: deletedAt,
       storeId: storeId,
     );
   }
@@ -463,8 +585,11 @@ class TerminalPartial extends PartialEntity<Terminal> {
       terminalCode: terminalCode,
       passwordHash: passwordHash,
       name: name,
+      isActive: isActive,
+      tokenVersion: tokenVersion,
       createdAt: createdAt,
       updatedAt: updatedAt,
+      deletedAt: deletedAt,
       storeId: storeId,
     );
   }
@@ -476,6 +601,8 @@ class TerminalPartial extends PartialEntity<Terminal> {
     if (terminalCode == null) missing.add('terminalCode');
     if (passwordHash == null) missing.add('passwordHash');
     if (name == null) missing.add('name');
+    if (isActive == null) missing.add('isActive');
+    if (tokenVersion == null) missing.add('tokenVersion');
     if (missing.isNotEmpty) {
       throw StateError(
         'Cannot convert TerminalPartial to Terminal: missing required fields: ${missing.join(', ')}',
@@ -486,8 +613,11 @@ class TerminalPartial extends PartialEntity<Terminal> {
       terminalCode: terminalCode!,
       passwordHash: passwordHash!,
       name: name!,
+      isActive: isActive!,
+      tokenVersion: tokenVersion!,
       createdAt: createdAt,
       updatedAt: updatedAt,
+      deletedAt: deletedAt,
       store: store?.toEntity(),
     );
   }
@@ -499,8 +629,11 @@ class TerminalPartial extends PartialEntity<Terminal> {
       if (terminalCode != null) 'terminalCode': terminalCode,
       if (passwordHash != null) 'passwordHash': passwordHash,
       if (name != null) 'name': name,
+      if (isActive != null) 'isActive': isActive,
+      if (tokenVersion != null) 'tokenVersion': tokenVersion,
       if (createdAt != null) 'createdAt': createdAt?.toIso8601String(),
       if (updatedAt != null) 'updatedAt': updatedAt?.toIso8601String(),
+      if (deletedAt != null) 'deletedAt': deletedAt?.toIso8601String(),
       if (store != null) 'store': store?.toJson(),
       if (storeId != null) 'storeId': storeId,
     };
@@ -512,8 +645,11 @@ class TerminalInsertDto implements InsertDto<Terminal> {
     required this.terminalCode,
     required this.passwordHash,
     required this.name,
+    required this.isActive,
+    required this.tokenVersion,
     this.createdAt,
     this.updatedAt,
+    this.deletedAt,
     this.storeId,
   });
 
@@ -523,9 +659,15 @@ class TerminalInsertDto implements InsertDto<Terminal> {
 
   final String name;
 
+  final bool isActive;
+
+  final int tokenVersion;
+
   final DateTime? createdAt;
 
   final DateTime? updatedAt;
+
+  final DateTime? deletedAt;
 
   final String? storeId;
 
@@ -535,8 +677,13 @@ class TerminalInsertDto implements InsertDto<Terminal> {
       'terminal_code': terminalCode,
       'password_hash': passwordHash,
       'name': name,
+      'is_active': isActive,
+      'token_version': tokenVersion,
       'created_at': DateTime.now().toIso8601String(),
       'updated_at': DateTime.now().toIso8601String(),
+      'deleted_at': deletedAt is DateTime
+          ? (deletedAt as DateTime).toIso8601String()
+          : deletedAt?.toString(),
       if (storeId != null) 'store_id': storeId,
     };
   }
@@ -549,16 +696,22 @@ class TerminalInsertDto implements InsertDto<Terminal> {
     String? terminalCode,
     String? passwordHash,
     String? name,
+    bool? isActive,
+    int? tokenVersion,
     DateTime? createdAt,
     DateTime? updatedAt,
+    DateTime? deletedAt,
     String? storeId,
   }) {
     return TerminalInsertDto(
       terminalCode: terminalCode ?? this.terminalCode,
       passwordHash: passwordHash ?? this.passwordHash,
       name: name ?? this.name,
+      isActive: isActive ?? this.isActive,
+      tokenVersion: tokenVersion ?? this.tokenVersion,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
       storeId: storeId ?? this.storeId,
     );
   }
@@ -569,8 +722,11 @@ class TerminalUpdateDto implements UpdateDto<Terminal> {
     this.terminalCode,
     this.passwordHash,
     this.name,
+    this.isActive,
+    this.tokenVersion,
     this.createdAt,
     this.updatedAt,
+    this.deletedAt,
     this.storeId,
   });
 
@@ -580,9 +736,15 @@ class TerminalUpdateDto implements UpdateDto<Terminal> {
 
   final String? name;
 
+  final bool? isActive;
+
+  final int? tokenVersion;
+
   final DateTime? createdAt;
 
   final DateTime? updatedAt;
+
+  final DateTime? deletedAt;
 
   final String? storeId;
 
@@ -592,11 +754,17 @@ class TerminalUpdateDto implements UpdateDto<Terminal> {
       if (terminalCode != null) 'terminal_code': terminalCode,
       if (passwordHash != null) 'password_hash': passwordHash,
       if (name != null) 'name': name,
+      if (isActive != null) 'is_active': isActive,
+      if (tokenVersion != null) 'token_version': tokenVersion,
       if (createdAt != null)
         'created_at': createdAt is DateTime
             ? (createdAt as DateTime).toIso8601String()
             : createdAt?.toString(),
       'updated_at': DateTime.now().toIso8601String(),
+      if (deletedAt != null)
+        'deleted_at': deletedAt is DateTime
+            ? (deletedAt as DateTime).toIso8601String()
+            : deletedAt?.toString(),
       if (storeId != null) 'store_id': storeId,
     };
   }
@@ -622,8 +790,11 @@ extension TerminalJson on Terminal {
       'terminalCode': terminalCode,
       'passwordHash': passwordHash,
       'name': name,
+      'isActive': isActive,
+      'tokenVersion': tokenVersion,
       if (createdAt != null) 'createdAt': createdAt?.toIso8601String(),
       if (updatedAt != null) 'updatedAt': updatedAt?.toIso8601String(),
+      if (deletedAt != null) 'deletedAt': deletedAt?.toIso8601String(),
       if (store != null) 'store': store?.toJson(),
     };
   }

@@ -18,6 +18,12 @@ Future<Merchant?> _authenticateFromToken(
     final payload = JwtService.verifyToken(token: token);
     final type = payload['type'] as String?;
     final id = payload['sub'] as String?;
+    final tokenVersionClaim = payload['tv'];
+    final tokenVersion = switch (tokenVersionClaim) {
+      final int value => value,
+      final num value => value.toInt(),
+      _ => null,
+    };
 
     if (type != 'terminal' || id == null) return null;
 
@@ -30,8 +36,18 @@ Future<Merchant?> _authenticateFromToken(
       ),
       where: TerminalQuery((t) => t.id.equals(id)),
     );
+    if (terminal == null ||
+        !terminal.isActive ||
+        terminal.store == null ||
+        terminal.store!.merchant == null ||
+        !terminal.store!.merchant!.isActive) {
+      return null;
+    }
+    if (tokenVersion != null && tokenVersion != terminal.tokenVersion) {
+      return null;
+    }
 
-    return terminal?.store?.merchant;
+    return terminal.store!.merchant;
   } on Exception {
     return null;
   }

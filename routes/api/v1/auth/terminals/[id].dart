@@ -3,8 +3,10 @@ import 'dart:io';
 import 'package:bcrypt/bcrypt.dart';
 import 'package:dart_frog/dart_frog.dart';
 import 'package:loxia/loxia.dart';
+import 'package:pos_backend/config/env.dart';
 import 'package:pos_backend/models/merchant/merchant.dart';
 import 'package:pos_backend/models/terminal/terminal.dart';
+import 'package:pos_backend/services/jwt_service.dart';
 import 'package:pos_backend/utils/db_error_matcher.dart';
 import 'package:pos_backend/utils/json_body_parser.dart';
 import 'package:pos_backend/validators/terminal_validators.dart';
@@ -13,11 +15,66 @@ import 'package:uuid/uuid.dart';
 Future<Response> onRequest(RequestContext context, String id) async {
   return switch (context.request.method) {
     .patch || .put => _updateTerminal(context, id),
+    .delete => _deleteTerminal(context, id),
     _ => Response.json(
       statusCode: HttpStatus.methodNotAllowed,
       body: {'status': 'error', 'message': 'Method not allowed.'},
     ),
   };
+}
+
+Future<Response> _deleteTerminal(RequestContext context, String id) async {
+  if (!Uuid.isValidUUID(fromString: id)) {
+    return Response.json(
+      statusCode: HttpStatus.badRequest,
+      body: {'status': 'error', 'message': 'Id must be a uuid value.'},
+    );
+  }
+
+  final terminals = context.read<DataSource>().getRepository<Terminal>();
+  final merchant = context.read<Merchant>();
+  Terminal? terminal;
+
+  try {
+    terminal = await terminals.findOneBy(
+      where: TerminalQuery(
+        (t) => t.id.equals(id).and(t.store.merchantId.equals(merchant.id)),
+      ),
+    );
+    if (terminal == null) {
+      return Response.json(
+        statusCode: HttpStatus.notFound,
+        body: {'status': 'error', 'message': 'Terminal not found.'},
+      );
+    }
+  } on Exception {
+    return Response.json(
+      statusCode: HttpStatus.internalServerError,
+      body: {
+        'status': 'error',
+        'message': 'Unable to verify terminal at the moment.',
+      },
+    );
+  }
+
+  try {
+    await terminals.softDeleteEntity(terminal);
+
+    return Response.json(
+      body: {
+        'status': 'success',
+        'message': 'Terminal deleted successfully.',
+      },
+    );
+  } on Exception {
+    return Response.json(
+      statusCode: HttpStatus.internalServerError,
+      body: {
+        'status': 'error',
+        'message': 'Unable to delete terminal at the moment.',
+      },
+    );
+  }
 }
 
 Future<Response> _updateTerminal(RequestContext context, String id) async {
@@ -50,12 +107,14 @@ Future<Response> _updateTerminal(RequestContext context, String id) async {
   final body = result.value;
   final name = body['name'] as String?;
   final password = body['password'] as String?;
+  final isActive = body['isActive'] as bool?;
   final passwordHash = password == null
       ? null
       : BCrypt.hashpw(password, BCrypt.gensalt());
+  final shouldRotateToken = passwordHash != null;
   final merchant = context.read<Merchant>();
 
-  if (name == null && passwordHash == null) {
+  if (name == null && passwordHash == null && isActive == null) {
     return Response.json(
       statusCode: HttpStatus.badRequest,
       body: {
@@ -66,8 +125,9 @@ Future<Response> _updateTerminal(RequestContext context, String id) async {
   }
 
   final terminals = context.read<DataSource>().getRepository<Terminal>();
+  Terminal? terminal;
   try {
-    final terminal = await terminals.findOneBy(
+    terminal = await terminals.findOneBy(
       where: TerminalQuery(
         (t) => t.id.equals(id).and(t.store.merchantId.equals(merchant.id)),
       ),
@@ -94,17 +154,39 @@ Future<Response> _updateTerminal(RequestContext context, String id) async {
         id: id,
         name: name,
         passwordHash: passwordHash,
+        isActive: isActive,
+        tokenVersion: shouldRotateToken
+            ? terminal.tokenVersion + 1
+            : terminal.tokenVersion,
       ),
     );
+    final headers = <String, String>{};
+    if (shouldRotateToken) {
+      final token = JwtService.generateToken(
+        userId: updatedTerminal.id,
+        type: 'terminal',
+        tokenVersion: updatedTerminal.tokenVersion,
+      );
+      final cookie = Cookie('access_token', token)
+        ..httpOnly = true
+        ..secure = Env.isProd
+        ..path = '/'
+        ..maxAge = Env.jwtExpiry.inSeconds
+        ..sameSite = SameSite.lax;
+      headers[HttpHeaders.setCookieHeader] = cookie.toString();
+    }
     return Response.json(
+      headers: headers,
       body: {
         'status': 'success',
         'user': {
           'id': updatedTerminal.id,
           'terminalCode': updatedTerminal.terminalCode,
           'name': updatedTerminal.name,
+          'isActive': updatedTerminal.isActive,
+          'tokenVersion': updatedTerminal.tokenVersion,
           'createdAt': updatedTerminal.createdAt?.toIso8601String(),
-          'updatedAt': updatedTerminal.createdAt?.toIso8601String(),
+          'updatedAt': updatedTerminal.updatedAt?.toIso8601String(),
         },
         'message': 'Terminal updated successfully.',
       },

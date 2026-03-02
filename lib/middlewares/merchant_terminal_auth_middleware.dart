@@ -18,14 +18,25 @@ Future<Merchant?> _authenticateFromToken(
     final payload = JwtService.verifyToken(token: token);
     final type = payload['type'] as String?;
     final id = payload['sub'] as String?;
+    final tokenVersionClaim = payload['tv'];
+    final tokenVersion = switch (tokenVersionClaim) {
+      final int value => value,
+      final num value => value.toInt(),
+      _ => null,
+    };
 
     if (id == null || type == null) return null;
 
     if (type == 'merchant') {
       final merchants = context.read<DataSource>().getRepository<Merchant>();
-      return await merchants.findOneBy(
+      final merchant = await merchants.findOneBy(
         where: MerchantQuery((m) => m.id.equals(id)),
       );
+      if (merchant == null || !merchant.isActive) return null;
+      if (tokenVersion != null && tokenVersion != merchant.tokenVersion) {
+        return null;
+      }
+      return merchant;
     }
 
     if (type == 'terminal') {
@@ -40,7 +51,17 @@ Future<Merchant?> _authenticateFromToken(
         ),
         where: TerminalQuery((t) => t.id.equals(id)),
       );
-      return terminal?.store?.merchant;
+      if (terminal == null ||
+          !terminal.isActive ||
+          terminal.store == null ||
+          terminal.store!.merchant == null ||
+          !terminal.store!.merchant!.isActive) {
+        return null;
+      }
+      if (tokenVersion != null && tokenVersion != terminal.tokenVersion) {
+        return null;
+      }
+      return terminal.store!.merchant;
     }
 
     return null;
