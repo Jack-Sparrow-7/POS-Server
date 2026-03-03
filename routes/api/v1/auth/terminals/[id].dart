@@ -10,6 +10,7 @@ import 'package:pos_backend/utils/auth_cookies.dart';
 import 'package:pos_backend/utils/db_error_matcher.dart';
 import 'package:pos_backend/utils/json_body_parser.dart';
 import 'package:pos_backend/validators/terminal_validators.dart';
+import 'package:postgres/postgres.dart';
 import 'package:uuid/uuid.dart';
 
 Future<Response> onRequest(RequestContext context, String id) async {
@@ -64,6 +65,15 @@ Future<Response> _deleteTerminal(RequestContext context, String id) async {
       body: {
         'status': 'success',
         'message': 'Terminal deleted successfully.',
+      },
+    );
+  } on ForeignKeyViolationException {
+    return Response.json(
+      statusCode: HttpStatus.conflict,
+      body: {
+        'status': 'error',
+        'message':
+            'Terminal cannot be deleted while associated records exist.',
       },
     );
   } on Exception {

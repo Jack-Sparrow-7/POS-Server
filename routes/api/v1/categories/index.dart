@@ -82,7 +82,7 @@ Future<Response> _createCategory(RequestContext context) async {
         name: name,
         description: description,
         storeId: storeId,
-        isActive: false,
+        isActive: true,
         imageUrl: imageUrl,
       ),
     );

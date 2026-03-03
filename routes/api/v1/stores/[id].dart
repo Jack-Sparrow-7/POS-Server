@@ -3,7 +3,10 @@ import 'dart:io';
 import 'package:dart_frog/dart_frog.dart';
 import 'package:loxia/loxia.dart';
 import 'package:pos_backend/enums/store_type.dart';
+import 'package:pos_backend/models/category/category.dart';
+import 'package:pos_backend/models/counter/counter.dart';
 import 'package:pos_backend/models/merchant/merchant.dart';
+import 'package:pos_backend/models/product/product.dart';
 import 'package:pos_backend/models/store/store.dart';
 import 'package:pos_backend/utils/db_error_matcher.dart';
 import 'package:pos_backend/utils/json_body_parser.dart';
@@ -17,11 +20,107 @@ Future<Response> onRequest(
   return switch (context.request.method) {
     .get => _getStore(context, id),
     .patch || .put => _updateStore(context, id),
+    .delete => _deleteStore(context, id),
     _ => Response.json(
       statusCode: HttpStatus.methodNotAllowed,
       body: {'status': 'error', 'message': 'Method not allowed.'},
     ),
   };
+}
+
+Future<Response> _deleteStore(RequestContext context, String id) async {
+  if (!Uuid.isValidUUID(fromString: id)) {
+    return Response.json(
+      statusCode: HttpStatus.badRequest,
+      body: {'status': 'error', 'message': 'Id must be a uuid value.'},
+    );
+  }
+
+  final stores = context.read<DataSource>().getRepository<Store>();
+  final categories = context.read<DataSource>().getRepository<Category>();
+  final counters = context.read<DataSource>().getRepository<Counter>();
+  final products = context.read<DataSource>().getRepository<Product>();
+  final merchant = context.read<Merchant>();
+  Store? store;
+
+  try {
+    store = await stores.findOneBy(
+      where: StoreQuery(
+        (s) => s.id.equals(id).and(s.merchantId.equals(merchant.id)),
+      ),
+    );
+    if (store == null) {
+      return Response.json(
+        statusCode: HttpStatus.notFound,
+        body: {'status': 'error', 'message': 'Store not found.'},
+      );
+    }
+
+    final hasCategory = await categories.findOneBy(
+      where: CategoryQuery((c) => c.storeId.equals(id)),
+    );
+    if (hasCategory != null) {
+      return Response.json(
+        statusCode: HttpStatus.conflict,
+        body: {
+          'status': 'error',
+          'message': 'Store cannot be deleted while categories are linked.',
+        },
+      );
+    }
+
+    final hasCounter = await counters.findOneBy(
+      where: CounterQuery((c) => c.storeId.equals(id)),
+    );
+    if (hasCounter != null) {
+      return Response.json(
+        statusCode: HttpStatus.conflict,
+        body: {
+          'status': 'error',
+          'message': 'Store cannot be deleted while counters are linked.',
+        },
+      );
+    }
+
+    final hasProduct = await products.findOneBy(
+      where: ProductQuery((p) => p.storeId.equals(id)),
+    );
+    if (hasProduct != null) {
+      return Response.json(
+        statusCode: HttpStatus.conflict,
+        body: {
+          'status': 'error',
+          'message': 'Store cannot be deleted while products are linked.',
+        },
+      );
+    }
+  } on Exception {
+    return Response.json(
+      statusCode: HttpStatus.internalServerError,
+      body: {
+        'status': 'error',
+        'message': 'Unable to verify store at the moment.',
+      },
+    );
+  }
+
+  try {
+    await stores.softDeleteEntity(store);
+    return Response.json(
+      body: {
+        'status': 'success',
+        'message': 'Store deleted successfully.',
+      },
+    );
+  } on Exception {
+    return Response.json(
+      statusCode: HttpStatus.internalServerError,
+      body: {
+        'status': 'error',
+        'message': 'Unable to delete store at the moment.',
+      },
+    );
+  }
 }
 
 Future<Response> _getStore(RequestContext context, String id) async {

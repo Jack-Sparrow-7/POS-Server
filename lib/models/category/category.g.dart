@@ -90,6 +90,17 @@ final EntityDescriptor<Category, CategoryPartial> $CategoryEntityDescriptor =
             uuid: false,
             isDeletedAt: false,
           ),
+          ColumnDescriptor(
+            name: 'deleted_at',
+            propertyName: 'deletedAt',
+            type: ColumnType.dateTime,
+            nullable: true,
+            unique: false,
+            isPrimaryKey: false,
+            autoIncrement: false,
+            uuid: false,
+            isDeletedAt: true,
+          ),
         ],
         relations: const [
           RelationDescriptor(
@@ -118,7 +129,9 @@ final EntityDescriptor<Category, CategoryPartial> $CategoryEntityDescriptor =
           name: (row['name'] as String),
           description: (row['description'] as String?),
           imageUrl: (row['image_url'] as String?),
-          isActive: row['is_active'] == 1,
+          isActive: row['is_active'] is bool
+              ? row['is_active']
+              : row['is_active'] == 1,
           createdAt: row['created_at'] == null
               ? null
               : row['created_at'] is String
@@ -129,6 +142,11 @@ final EntityDescriptor<Category, CategoryPartial> $CategoryEntityDescriptor =
               : row['updated_at'] is String
               ? DateTime.parse(row['updated_at'].toString())
               : row['updated_at'] as DateTime,
+          deletedAt: row['deleted_at'] == null
+              ? null
+              : row['deleted_at'] is String
+              ? DateTime.parse(row['deleted_at'].toString())
+              : row['deleted_at'] as DateTime,
           store: null,
         ),
         toRow: (e) => {
@@ -139,6 +157,7 @@ final EntityDescriptor<Category, CategoryPartial> $CategoryEntityDescriptor =
           'is_active': e.isActive,
           'created_at': e.createdAt?.toIso8601String(),
           'updated_at': e.updatedAt?.toIso8601String(),
+          'deleted_at': e.deletedAt?.toIso8601String(),
           'store_id': e.store?.id,
         },
         fieldsContext: const CategoryFieldsContext(),
@@ -179,6 +198,8 @@ class CategoryFieldsContext extends QueryFieldsContext<Category> {
 
   QueryField<DateTime?> get updatedAt => field<DateTime?>('updated_at');
 
+  QueryField<DateTime?> get deletedAt => field<DateTime?>('deleted_at');
+
   QueryField<String?> get storeId => field<String?>('store_id');
 
   StoreFieldsContext get store {
@@ -216,6 +237,7 @@ class CategorySelect extends SelectOptions<Category, CategoryPartial> {
     this.isActive = true,
     this.createdAt = true,
     this.updatedAt = true,
+    this.deletedAt = true,
     this.storeId = true,
     this.relations,
   });
@@ -234,6 +256,8 @@ class CategorySelect extends SelectOptions<Category, CategoryPartial> {
 
   final bool updatedAt;
 
+  final bool deletedAt;
+
   final bool storeId;
 
   final CategoryRelations? relations;
@@ -247,6 +271,7 @@ class CategorySelect extends SelectOptions<Category, CategoryPartial> {
       isActive ||
       createdAt ||
       updatedAt ||
+      deletedAt ||
       storeId ||
       (relations?.hasSelections ?? false);
 
@@ -262,6 +287,7 @@ class CategorySelect extends SelectOptions<Category, CategoryPartial> {
       isActive: isActive,
       createdAt: createdAt,
       updatedAt: updatedAt,
+      deletedAt: deletedAt,
       storeId: storeId,
       relations: relations as CategoryRelations?,
     );
@@ -337,6 +363,15 @@ class CategorySelect extends SelectOptions<Category, CategoryPartial> {
         ),
       );
     }
+    if (deletedAt) {
+      out.add(
+        SelectField(
+          'deleted_at',
+          tableAlias: tableAlias,
+          alias: aliasFor('deleted_at'),
+        ),
+      );
+    }
     if (storeId) {
       out.add(
         SelectField(
@@ -388,6 +423,15 @@ class CategorySelect extends SelectOptions<Category, CategoryPartial> {
                           readValue(row, 'updated_at', path: path) as String,
                         )
                       : readValue(row, 'updated_at', path: path) as DateTime)
+          : null,
+      deletedAt: deletedAt
+          ? readValue(row, 'deleted_at', path: path) == null
+                ? null
+                : (readValue(row, 'deleted_at', path: path) is String
+                      ? DateTime.parse(
+                          readValue(row, 'deleted_at', path: path) as String,
+                        )
+                      : readValue(row, 'deleted_at', path: path) as DateTime)
           : null,
       storeId: storeId
           ? readValue(row, 'store_id', path: path) as String?
@@ -444,6 +488,7 @@ class CategoryPartial extends PartialEntity<Category> {
     this.isActive,
     this.createdAt,
     this.updatedAt,
+    this.deletedAt,
     this.storeId,
     this.store,
   });
@@ -461,6 +506,8 @@ class CategoryPartial extends PartialEntity<Category> {
   final DateTime? createdAt;
 
   final DateTime? updatedAt;
+
+  final DateTime? deletedAt;
 
   final String? storeId;
 
@@ -488,6 +535,7 @@ class CategoryPartial extends PartialEntity<Category> {
       isActive: isActive!,
       createdAt: createdAt,
       updatedAt: updatedAt,
+      deletedAt: deletedAt,
       storeId: storeId,
     );
   }
@@ -501,6 +549,7 @@ class CategoryPartial extends PartialEntity<Category> {
       isActive: isActive,
       createdAt: createdAt,
       updatedAt: updatedAt,
+      deletedAt: deletedAt,
       storeId: storeId,
     );
   }
@@ -524,6 +573,7 @@ class CategoryPartial extends PartialEntity<Category> {
       isActive: isActive!,
       createdAt: createdAt,
       updatedAt: updatedAt,
+      deletedAt: deletedAt,
       store: store?.toEntity(),
     );
   }
@@ -538,6 +588,7 @@ class CategoryPartial extends PartialEntity<Category> {
       if (isActive != null) 'isActive': isActive,
       if (createdAt != null) 'createdAt': createdAt?.toIso8601String(),
       if (updatedAt != null) 'updatedAt': updatedAt?.toIso8601String(),
+      if (deletedAt != null) 'deletedAt': deletedAt?.toIso8601String(),
       if (store != null) 'store': store?.toJson(),
       if (storeId != null) 'storeId': storeId,
     };
@@ -552,6 +603,7 @@ class CategoryInsertDto implements InsertDto<Category> {
     required this.isActive,
     this.createdAt,
     this.updatedAt,
+    this.deletedAt,
     this.storeId,
   });
 
@@ -567,6 +619,8 @@ class CategoryInsertDto implements InsertDto<Category> {
 
   final DateTime? updatedAt;
 
+  final DateTime? deletedAt;
+
   final String? storeId;
 
   @override
@@ -578,6 +632,9 @@ class CategoryInsertDto implements InsertDto<Category> {
       'is_active': isActive,
       'created_at': DateTime.now().toIso8601String(),
       'updated_at': DateTime.now().toIso8601String(),
+      'deleted_at': deletedAt is DateTime
+          ? (deletedAt as DateTime).toIso8601String()
+          : deletedAt?.toString(),
       if (storeId != null) 'store_id': storeId,
     };
   }
@@ -593,6 +650,7 @@ class CategoryInsertDto implements InsertDto<Category> {
     bool? isActive,
     DateTime? createdAt,
     DateTime? updatedAt,
+    DateTime? deletedAt,
     String? storeId,
   }) {
     return CategoryInsertDto(
@@ -602,6 +660,7 @@ class CategoryInsertDto implements InsertDto<Category> {
       isActive: isActive ?? this.isActive,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
       storeId: storeId ?? this.storeId,
     );
   }
@@ -615,6 +674,7 @@ class CategoryUpdateDto implements UpdateDto<Category> {
     this.isActive,
     this.createdAt,
     this.updatedAt,
+    this.deletedAt,
     this.storeId,
   });
 
@@ -630,6 +690,8 @@ class CategoryUpdateDto implements UpdateDto<Category> {
 
   final DateTime? updatedAt;
 
+  final DateTime? deletedAt;
+
   final String? storeId;
 
   @override
@@ -644,6 +706,10 @@ class CategoryUpdateDto implements UpdateDto<Category> {
             ? (createdAt as DateTime).toIso8601String()
             : createdAt?.toString(),
       'updated_at': DateTime.now().toIso8601String(),
+      if (deletedAt != null)
+        'deleted_at': deletedAt is DateTime
+            ? (deletedAt as DateTime).toIso8601String()
+            : deletedAt?.toString(),
       if (storeId != null) 'store_id': storeId,
     };
   }
@@ -672,6 +738,7 @@ extension CategoryJson on Category {
       'isActive': isActive,
       if (createdAt != null) 'createdAt': createdAt?.toIso8601String(),
       if (updatedAt != null) 'updatedAt': updatedAt?.toIso8601String(),
+      if (deletedAt != null) 'deletedAt': deletedAt?.toIso8601String(),
       if (store != null) 'store': store?.toJson(),
     };
   }
