@@ -81,7 +81,7 @@ Future<Response> _createCounter(RequestContext context) async {
         name: name,
         description: description,
         storeId: storeId,
-        isActive: false,
+        isActive: true,
       ),
     );
     return Response.json(

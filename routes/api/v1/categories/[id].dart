@@ -4,10 +4,10 @@ import 'package:dart_frog/dart_frog.dart';
 import 'package:loxia/loxia.dart';
 import 'package:pos_backend/models/category/category.dart';
 import 'package:pos_backend/models/merchant/merchant.dart';
+import 'package:pos_backend/models/product/product.dart';
 import 'package:pos_backend/utils/db_error_matcher.dart';
 import 'package:pos_backend/utils/json_body_parser.dart';
 import 'package:pos_backend/validators/category_validators.dart';
-import 'package:postgres/postgres.dart';
 import 'package:uuid/uuid.dart';
 
 Future<Response> onRequest(
@@ -181,6 +181,7 @@ Future<Response> _deleteCategory(RequestContext context, String id) async {
   }
 
   final categories = context.read<DataSource>().getRepository<Category>();
+  final products = context.read<DataSource>().getRepository<Product>();
   final merchant = context.read<Merchant>();
   Category? category;
 
@@ -207,20 +208,27 @@ Future<Response> _deleteCategory(RequestContext context, String id) async {
   }
 
   try {
+    final linkedProduct = await products.findOneBy(
+      where: ProductQuery(
+        (p) =>
+            p.categoryId.equals(id).and(p.store.merchantId.equals(merchant.id)),
+      ),
+    );
+    if (linkedProduct != null) {
+      return Response.json(
+        statusCode: HttpStatus.conflict,
+        body: {
+          'status': 'error',
+          'message': 'Category cannot be deleted while products are linked.',
+        },
+      );
+    }
+
     await categories.softDeleteEntity(category);
     return Response.json(
       body: {
         'status': 'success',
         'message': 'Category deleted successfully.',
-      },
-    );
-  } on ForeignKeyViolationException {
-    return Response.json(
-      statusCode: HttpStatus.conflict,
-      body: {
-        'status': 'error',
-        'message':
-            'Category cannot be deleted while associated products exist.',
       },
     );
   } on Exception {

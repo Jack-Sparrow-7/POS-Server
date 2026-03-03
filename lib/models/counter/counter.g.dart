@@ -78,6 +78,17 @@ final EntityDescriptor<Counter, CounterPartial> $CounterEntityDescriptor = () {
         uuid: false,
         isDeletedAt: false,
       ),
+      ColumnDescriptor(
+        name: 'deleted_at',
+        propertyName: 'deletedAt',
+        type: ColumnType.dateTime,
+        nullable: true,
+        unique: false,
+        isPrimaryKey: false,
+        autoIncrement: false,
+        uuid: false,
+        isDeletedAt: true,
+      ),
     ],
     relations: const [
       RelationDescriptor(
@@ -105,7 +116,9 @@ final EntityDescriptor<Counter, CounterPartial> $CounterEntityDescriptor = () {
       id: (row['id'] as String),
       name: (row['name'] as String),
       description: (row['description'] as String?),
-      isActive: row['is_active'] == 1,
+      isActive: row['is_active'] is bool
+          ? row['is_active']
+          : row['is_active'] == 1,
       createdAt: row['created_at'] == null
           ? null
           : row['created_at'] is String
@@ -116,6 +129,11 @@ final EntityDescriptor<Counter, CounterPartial> $CounterEntityDescriptor = () {
           : row['updated_at'] is String
           ? DateTime.parse(row['updated_at'].toString())
           : row['updated_at'] as DateTime,
+      deletedAt: row['deleted_at'] == null
+          ? null
+          : row['deleted_at'] is String
+          ? DateTime.parse(row['deleted_at'].toString())
+          : row['deleted_at'] as DateTime,
       store: null,
     ),
     toRow: (e) => {
@@ -125,6 +143,7 @@ final EntityDescriptor<Counter, CounterPartial> $CounterEntityDescriptor = () {
       'is_active': e.isActive,
       'created_at': e.createdAt?.toIso8601String(),
       'updated_at': e.updatedAt?.toIso8601String(),
+      'deleted_at': e.deletedAt?.toIso8601String(),
       'store_id': e.store?.id,
     },
     fieldsContext: const CounterFieldsContext(),
@@ -160,6 +179,8 @@ class CounterFieldsContext extends QueryFieldsContext<Counter> {
   QueryField<DateTime?> get createdAt => field<DateTime?>('created_at');
 
   QueryField<DateTime?> get updatedAt => field<DateTime?>('updated_at');
+
+  QueryField<DateTime?> get deletedAt => field<DateTime?>('deleted_at');
 
   QueryField<String?> get storeId => field<String?>('store_id');
 
@@ -197,6 +218,7 @@ class CounterSelect extends SelectOptions<Counter, CounterPartial> {
     this.isActive = true,
     this.createdAt = true,
     this.updatedAt = true,
+    this.deletedAt = true,
     this.storeId = true,
     this.relations,
   });
@@ -213,6 +235,8 @@ class CounterSelect extends SelectOptions<Counter, CounterPartial> {
 
   final bool updatedAt;
 
+  final bool deletedAt;
+
   final bool storeId;
 
   final CounterRelations? relations;
@@ -225,6 +249,7 @@ class CounterSelect extends SelectOptions<Counter, CounterPartial> {
       isActive ||
       createdAt ||
       updatedAt ||
+      deletedAt ||
       storeId ||
       (relations?.hasSelections ?? false);
 
@@ -239,6 +264,7 @@ class CounterSelect extends SelectOptions<Counter, CounterPartial> {
       isActive: isActive,
       createdAt: createdAt,
       updatedAt: updatedAt,
+      deletedAt: deletedAt,
       storeId: storeId,
       relations: relations as CounterRelations?,
     );
@@ -305,6 +331,15 @@ class CounterSelect extends SelectOptions<Counter, CounterPartial> {
         ),
       );
     }
+    if (deletedAt) {
+      out.add(
+        SelectField(
+          'deleted_at',
+          tableAlias: tableAlias,
+          alias: aliasFor('deleted_at'),
+        ),
+      );
+    }
     if (storeId) {
       out.add(
         SelectField(
@@ -353,6 +388,15 @@ class CounterSelect extends SelectOptions<Counter, CounterPartial> {
                           readValue(row, 'updated_at', path: path) as String,
                         )
                       : readValue(row, 'updated_at', path: path) as DateTime)
+          : null,
+      deletedAt: deletedAt
+          ? readValue(row, 'deleted_at', path: path) == null
+                ? null
+                : (readValue(row, 'deleted_at', path: path) is String
+                      ? DateTime.parse(
+                          readValue(row, 'deleted_at', path: path) as String,
+                        )
+                      : readValue(row, 'deleted_at', path: path) as DateTime)
           : null,
       storeId: storeId
           ? readValue(row, 'store_id', path: path) as String?
@@ -406,6 +450,7 @@ class CounterPartial extends PartialEntity<Counter> {
     this.isActive,
     this.createdAt,
     this.updatedAt,
+    this.deletedAt,
     this.storeId,
     this.store,
   });
@@ -421,6 +466,8 @@ class CounterPartial extends PartialEntity<Counter> {
   final DateTime? createdAt;
 
   final DateTime? updatedAt;
+
+  final DateTime? deletedAt;
 
   final String? storeId;
 
@@ -447,6 +494,7 @@ class CounterPartial extends PartialEntity<Counter> {
       isActive: isActive!,
       createdAt: createdAt,
       updatedAt: updatedAt,
+      deletedAt: deletedAt,
       storeId: storeId,
     );
   }
@@ -459,6 +507,7 @@ class CounterPartial extends PartialEntity<Counter> {
       isActive: isActive,
       createdAt: createdAt,
       updatedAt: updatedAt,
+      deletedAt: deletedAt,
       storeId: storeId,
     );
   }
@@ -481,6 +530,7 @@ class CounterPartial extends PartialEntity<Counter> {
       isActive: isActive!,
       createdAt: createdAt,
       updatedAt: updatedAt,
+      deletedAt: deletedAt,
       store: store?.toEntity(),
     );
   }
@@ -494,6 +544,7 @@ class CounterPartial extends PartialEntity<Counter> {
       if (isActive != null) 'isActive': isActive,
       if (createdAt != null) 'createdAt': createdAt?.toIso8601String(),
       if (updatedAt != null) 'updatedAt': updatedAt?.toIso8601String(),
+      if (deletedAt != null) 'deletedAt': deletedAt?.toIso8601String(),
       if (store != null) 'store': store?.toJson(),
       if (storeId != null) 'storeId': storeId,
     };
@@ -507,6 +558,7 @@ class CounterInsertDto implements InsertDto<Counter> {
     required this.isActive,
     this.createdAt,
     this.updatedAt,
+    this.deletedAt,
     this.storeId,
   });
 
@@ -520,6 +572,8 @@ class CounterInsertDto implements InsertDto<Counter> {
 
   final DateTime? updatedAt;
 
+  final DateTime? deletedAt;
+
   final String? storeId;
 
   @override
@@ -530,6 +584,9 @@ class CounterInsertDto implements InsertDto<Counter> {
       'is_active': isActive,
       'created_at': DateTime.now().toIso8601String(),
       'updated_at': DateTime.now().toIso8601String(),
+      'deleted_at': deletedAt is DateTime
+          ? (deletedAt as DateTime).toIso8601String()
+          : deletedAt?.toString(),
       if (storeId != null) 'store_id': storeId,
     };
   }
@@ -544,6 +601,7 @@ class CounterInsertDto implements InsertDto<Counter> {
     bool? isActive,
     DateTime? createdAt,
     DateTime? updatedAt,
+    DateTime? deletedAt,
     String? storeId,
   }) {
     return CounterInsertDto(
@@ -552,6 +610,7 @@ class CounterInsertDto implements InsertDto<Counter> {
       isActive: isActive ?? this.isActive,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
       storeId: storeId ?? this.storeId,
     );
   }
@@ -564,6 +623,7 @@ class CounterUpdateDto implements UpdateDto<Counter> {
     this.isActive,
     this.createdAt,
     this.updatedAt,
+    this.deletedAt,
     this.storeId,
   });
 
@@ -576,6 +636,8 @@ class CounterUpdateDto implements UpdateDto<Counter> {
   final DateTime? createdAt;
 
   final DateTime? updatedAt;
+
+  final DateTime? deletedAt;
 
   final String? storeId;
 
@@ -590,6 +652,10 @@ class CounterUpdateDto implements UpdateDto<Counter> {
             ? (createdAt as DateTime).toIso8601String()
             : createdAt?.toString(),
       'updated_at': DateTime.now().toIso8601String(),
+      if (deletedAt != null)
+        'deleted_at': deletedAt is DateTime
+            ? (deletedAt as DateTime).toIso8601String()
+            : deletedAt?.toString(),
       if (storeId != null) 'store_id': storeId,
     };
   }
@@ -617,6 +683,7 @@ extension CounterJson on Counter {
       'isActive': isActive,
       if (createdAt != null) 'createdAt': createdAt?.toIso8601String(),
       if (updatedAt != null) 'updatedAt': updatedAt?.toIso8601String(),
+      if (deletedAt != null) 'deletedAt': deletedAt?.toIso8601String(),
       if (store != null) 'store': store?.toJson(),
     };
   }

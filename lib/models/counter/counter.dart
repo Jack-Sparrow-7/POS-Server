@@ -16,10 +16,11 @@ class Counter extends Entity {
     required this.id,
     required this.name,
     required this.description,
-    required this.isActive,
+    this.isActive = true,
     this.store,
     this.createdAt,
     this.updatedAt,
+    this.deletedAt,
   });
 
   /// Unique identifier for the counter.
@@ -50,6 +51,10 @@ class Counter extends Entity {
   /// Timestamp when the Counter was last updated.
   @UpdatedAt()
   DateTime? updatedAt;
+
+  /// Timestamp when the counter was soft-deleted.
+  @DeletedAt()
+  DateTime? deletedAt;
 
   /// Entity descriptor used by Loxia for metadata and query operations.
   static EntityDescriptor<Counter, CounterPartial> get entity =>
