@@ -30,14 +30,14 @@ Future<Response> _getAllTerminal(RequestContext context) async {
   if (storeId == null) {
     return Response.json(
       statusCode: HttpStatus.badRequest,
-      body: {'status': 'error', 'message': 'Store Id parameter required.'},
+      body: {'status': 'error', 'message': 'Store ID is required.'},
     );
   }
 
   if (!Uuid.isValidUUID(fromString: storeId)) {
     return Response.json(
       statusCode: HttpStatus.badRequest,
-      body: {'status': 'error', 'message': 'Store Id must be a uuid value.'},
+      body: {'status': 'error', 'message': 'Store ID must be a valid UUID.'},
     );
   }
 
@@ -58,7 +58,7 @@ Future<Response> _getAllTerminal(RequestContext context) async {
       statusCode: HttpStatus.internalServerError,
       body: {
         'status': 'error',
-        'message': 'Unable to verify store at the moment.',
+        'message': 'Unable to check the store right now.',
       },
     );
   }

@@ -28,7 +28,7 @@ Future<Response> _getProduct(RequestContext context, String id) async {
   if (!Uuid.isValidUUID(fromString: id)) {
     return Response.json(
       statusCode: HttpStatus.badRequest,
-      body: {'status': 'error', 'message': 'Id must be a uuid value.'},
+      body: {'status': 'error', 'message': 'Invalid ID.'},
     );
   }
 
@@ -66,7 +66,7 @@ Future<Response> _updateProduct(RequestContext context, String id) async {
   if (!Uuid.isValidUUID(fromString: id)) {
     return Response.json(
       statusCode: HttpStatus.badRequest,
-      body: {'status': 'error', 'message': 'Id must be a uuid value.'},
+      body: {'status': 'error', 'message': 'Invalid ID.'},
     );
   }
 
@@ -114,7 +114,7 @@ Future<Response> _updateProduct(RequestContext context, String id) async {
       statusCode: HttpStatus.badRequest,
       body: {
         'status': 'error',
-        'message': 'Request body must include at least one updatable field.',
+        'message': 'Provide at least one field to update.',
       },
     );
   }
@@ -142,7 +142,7 @@ Future<Response> _updateProduct(RequestContext context, String id) async {
       statusCode: HttpStatus.internalServerError,
       body: {
         'status': 'error',
-        'message': 'Unable to verify product at the moment.',
+        'message': 'Unable to check the product right now.',
       },
     );
   }
@@ -166,7 +166,7 @@ Future<Response> _updateProduct(RequestContext context, String id) async {
         statusCode: HttpStatus.internalServerError,
         body: {
           'status': 'error',
-          'message': 'Unable to verify category at the moment.',
+          'message': 'Unable to check the category right now.',
         },
       );
     }
@@ -192,7 +192,7 @@ Future<Response> _updateProduct(RequestContext context, String id) async {
         statusCode: HttpStatus.internalServerError,
         body: {
           'status': 'error',
-          'message': 'Unable to verify counter at the moment.',
+          'message': 'Unable to check the counter right now.',
         },
       );
     }
@@ -245,7 +245,7 @@ Future<Response> _deleteProduct(RequestContext context, String id) async {
   if (!Uuid.isValidUUID(fromString: id)) {
     return Response.json(
       statusCode: HttpStatus.badRequest,
-      body: {'status': 'error', 'message': 'Id must be a uuid value.'},
+      body: {'status': 'error', 'message': 'Invalid ID.'},
     );
   }
 
@@ -271,7 +271,7 @@ Future<Response> _deleteProduct(RequestContext context, String id) async {
       statusCode: HttpStatus.internalServerError,
       body: {
         'status': 'error',
-        'message': 'Unable to verify product at the moment.',
+        'message': 'Unable to check the product right now.',
       },
     );
   }

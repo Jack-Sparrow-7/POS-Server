@@ -61,7 +61,7 @@ Future<Response> onRequest(RequestContext context) async {
         statusCode: HttpStatus.notFound,
         body: {
           'status': 'error',
-          'message': 'Stock entry not found for the provided store/product.',
+          'message': 'Stock record not found for this product in this store.',
         },
       );
     }

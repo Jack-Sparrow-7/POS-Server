@@ -80,7 +80,7 @@ Future<Response> _updateMerchant(RequestContext context) async {
       statusCode: HttpStatus.badRequest,
       body: {
         'status': 'error',
-        'message': 'Request body must include at least one updatable field.',
+        'message': 'Provide at least one field to update.',
       },
     );
   }

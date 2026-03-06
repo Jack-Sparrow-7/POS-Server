@@ -26,21 +26,21 @@ Future<Response> _getStockMovements(RequestContext context) async {
   if (storeId == null) {
     return Response.json(
       statusCode: HttpStatus.badRequest,
-      body: {'status': 'error', 'message': 'Store Id parameter required.'},
+      body: {'status': 'error', 'message': 'Store ID is required.'},
     );
   }
 
   if (!Uuid.isValidUUID(fromString: storeId)) {
     return Response.json(
       statusCode: HttpStatus.badRequest,
-      body: {'status': 'error', 'message': 'Store Id must be a uuid value.'},
+      body: {'status': 'error', 'message': 'Store ID must be a valid UUID.'},
     );
   }
 
   if (productId != null && !Uuid.isValidUUID(fromString: productId)) {
     return Response.json(
       statusCode: HttpStatus.badRequest,
-      body: {'status': 'error', 'message': 'Product Id must be a uuid value.'},
+      body: {'status': 'error', 'message': 'Product ID must be a valid UUID.'},
     );
   }
 

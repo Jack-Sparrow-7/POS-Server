@@ -32,7 +32,7 @@ Future<Response> _deleteStore(RequestContext context, String id) async {
   if (!Uuid.isValidUUID(fromString: id)) {
     return Response.json(
       statusCode: HttpStatus.badRequest,
-      body: {'status': 'error', 'message': 'Id must be a uuid value.'},
+      body: {'status': 'error', 'message': 'Invalid ID.'},
     );
   }
 
@@ -99,7 +99,7 @@ Future<Response> _deleteStore(RequestContext context, String id) async {
       statusCode: HttpStatus.internalServerError,
       body: {
         'status': 'error',
-        'message': 'Unable to verify store at the moment.',
+        'message': 'Unable to check the store right now.',
       },
     );
   }
@@ -127,7 +127,7 @@ Future<Response> _getStore(RequestContext context, String id) async {
   if (!Uuid.isValidUUID(fromString: id)) {
     return Response.json(
       statusCode: HttpStatus.badRequest,
-      body: {'status': 'error', 'message': 'Id must be a uuid value.'},
+      body: {'status': 'error', 'message': 'Invalid ID.'},
     );
   }
 
@@ -178,7 +178,7 @@ Future<Response> _updateStore(RequestContext context, String id) async {
   if (!Uuid.isValidUUID(fromString: id)) {
     return Response.json(
       statusCode: HttpStatus.badRequest,
-      body: {'status': 'error', 'message': 'Id must be a uuid value.'},
+      body: {'status': 'error', 'message': 'Invalid ID.'},
     );
   }
 
@@ -219,7 +219,7 @@ Future<Response> _updateStore(RequestContext context, String id) async {
       statusCode: HttpStatus.badRequest,
       body: {
         'status': 'error',
-        'message': 'Request body must include at least one updatable field.',
+        'message': 'Provide at least one field to update.',
       },
     );
   }
