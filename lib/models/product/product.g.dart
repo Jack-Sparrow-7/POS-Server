@@ -122,6 +122,17 @@ final EntityDescriptor<Product, ProductPartial> $ProductEntityDescriptor = () {
         uuid: false,
         isDeletedAt: false,
       ),
+      ColumnDescriptor(
+        name: 'deleted_at',
+        propertyName: 'deletedAt',
+        type: ColumnType.dateTime,
+        nullable: true,
+        unique: false,
+        isPrimaryKey: false,
+        autoIncrement: false,
+        uuid: false,
+        isDeletedAt: true,
+      ),
     ],
     relations: const [
       RelationDescriptor(
@@ -175,6 +186,18 @@ final EntityDescriptor<Product, ProductPartial> $ProductEntityDescriptor = () {
           unique: false,
         ),
       ),
+      RelationDescriptor(
+        fieldName: 'stock',
+        type: RelationType.oneToOne,
+        target: Stock,
+        isOwningSide: false,
+        mappedBy: 'product',
+        fetch: RelationFetchStrategy.lazy,
+        cascade: const [],
+        cascadePersist: false,
+        cascadeMerge: false,
+        cascadeRemove: false,
+      ),
     ],
     uniqueConstraints: const [
       UniqueConstraintDescriptor(columns: ['name', 'store_id']),
@@ -187,7 +210,9 @@ final EntityDescriptor<Product, ProductPartial> $ProductEntityDescriptor = () {
       sellingPrice: (row['selling_price'] as int),
       sku: (row['sku'] as String?),
       imageUrl: (row['image_url'] as String?),
-      isActive: row['is_active'] == 1,
+      isActive: row['is_active'] is bool
+          ? row['is_active']
+          : row['is_active'] == 1,
       createdAt: row['created_at'] == null
           ? null
           : row['created_at'] is String
@@ -198,9 +223,15 @@ final EntityDescriptor<Product, ProductPartial> $ProductEntityDescriptor = () {
           : row['updated_at'] is String
           ? DateTime.parse(row['updated_at'].toString())
           : row['updated_at'] as DateTime,
+      deletedAt: row['deleted_at'] == null
+          ? null
+          : row['deleted_at'] is String
+          ? DateTime.parse(row['deleted_at'].toString())
+          : row['deleted_at'] as DateTime,
       store: null,
       category: null,
       counter: null,
+      stock: null,
     ),
     toRow: (e) => {
       'id': e.id,
@@ -213,6 +244,7 @@ final EntityDescriptor<Product, ProductPartial> $ProductEntityDescriptor = () {
       'is_active': e.isActive,
       'created_at': e.createdAt?.toIso8601String(),
       'updated_at': e.updatedAt?.toIso8601String(),
+      'deleted_at': e.deletedAt?.toIso8601String(),
       'store_id': e.store?.id,
       'category_id': e.category?.id,
       'counter_id': e.counter?.id,
@@ -259,6 +291,8 @@ class ProductFieldsContext extends QueryFieldsContext<Product> {
 
   QueryField<DateTime?> get updatedAt => field<DateTime?>('updated_at');
 
+  QueryField<DateTime?> get deletedAt => field<DateTime?>('deleted_at');
+
   QueryField<String?> get storeId => field<String?>('store_id');
 
   QueryField<String?> get categoryId => field<String?>('category_id');
@@ -297,6 +331,22 @@ class ProductFieldsContext extends QueryFieldsContext<Product> {
     );
     return CounterFieldsContext(runtimeOrThrow, alias);
   }
+
+  /// Find the owning relation on the target entity to get join column info
+  StockFieldsContext get stock {
+    final targetRelation = $StockEntityDescriptor.relations.firstWhere(
+      (r) => r.fieldName == 'product',
+    );
+    final joinColumn = targetRelation.joinColumn!;
+    final alias = ensureRelationJoin(
+      relationName: 'stock',
+      targetTableName: $StockEntityDescriptor.qualifiedTableName,
+      localColumn: joinColumn.referencedColumnName,
+      foreignColumn: joinColumn.name,
+      joinType: JoinType.left,
+    );
+    return StockFieldsContext(runtimeOrThrow, alias);
+  }
 }
 
 class ProductQuery extends QueryBuilder<Product> {
@@ -325,6 +375,7 @@ class ProductSelect extends SelectOptions<Product, ProductPartial> {
     this.isActive = true,
     this.createdAt = true,
     this.updatedAt = true,
+    this.deletedAt = true,
     this.storeId = true,
     this.categoryId = true,
     this.counterId = true,
@@ -351,6 +402,8 @@ class ProductSelect extends SelectOptions<Product, ProductPartial> {
 
   final bool updatedAt;
 
+  final bool deletedAt;
+
   final bool storeId;
 
   final bool categoryId;
@@ -371,6 +424,7 @@ class ProductSelect extends SelectOptions<Product, ProductPartial> {
       isActive ||
       createdAt ||
       updatedAt ||
+      deletedAt ||
       storeId ||
       categoryId ||
       counterId ||
@@ -391,6 +445,7 @@ class ProductSelect extends SelectOptions<Product, ProductPartial> {
       isActive: isActive,
       createdAt: createdAt,
       updatedAt: updatedAt,
+      deletedAt: deletedAt,
       storeId: storeId,
       categoryId: categoryId,
       counterId: counterId,
@@ -491,6 +546,15 @@ class ProductSelect extends SelectOptions<Product, ProductPartial> {
         ),
       );
     }
+    if (deletedAt) {
+      out.add(
+        SelectField(
+          'deleted_at',
+          tableAlias: tableAlias,
+          alias: aliasFor('deleted_at'),
+        ),
+      );
+    }
     if (storeId) {
       out.add(
         SelectField(
@@ -547,6 +611,11 @@ class ProductSelect extends SelectOptions<Product, ProductPartial> {
         path: extendPath(path, 'counter'),
       );
     }
+    StockPartial? stockPartial;
+    final stockSelect = relations?.stock;
+    if (stockSelect != null && stockSelect.hasSelections) {
+      stockPartial = stockSelect.hydrate(row, path: extendPath(path, 'stock'));
+    }
     return ProductPartial(
       id: id ? readValue(row, 'id', path: path) as String : null,
       name: name ? readValue(row, 'name', path: path) as String : null,
@@ -584,6 +653,15 @@ class ProductSelect extends SelectOptions<Product, ProductPartial> {
                         )
                       : readValue(row, 'updated_at', path: path) as DateTime)
           : null,
+      deletedAt: deletedAt
+          ? readValue(row, 'deleted_at', path: path) == null
+                ? null
+                : (readValue(row, 'deleted_at', path: path) is String
+                      ? DateTime.parse(
+                          readValue(row, 'deleted_at', path: path) as String,
+                        )
+                      : readValue(row, 'deleted_at', path: path) as DateTime)
+          : null,
       storeId: storeId
           ? readValue(row, 'store_id', path: path) as String?
           : null,
@@ -596,6 +674,7 @@ class ProductSelect extends SelectOptions<Product, ProductPartial> {
           ? readValue(row, 'counter_id', path: path) as String?
           : null,
       counter: counterPartial,
+      stock: stockPartial,
     );
   }
 
@@ -607,7 +686,7 @@ class ProductSelect extends SelectOptions<Product, ProductPartial> {
 }
 
 class ProductRelations extends RelationsOptions<Product, ProductPartial> {
-  const ProductRelations({this.store, this.category, this.counter});
+  const ProductRelations({this.store, this.category, this.counter, this.stock});
 
   final StoreSelect? store;
 
@@ -615,11 +694,14 @@ class ProductRelations extends RelationsOptions<Product, ProductPartial> {
 
   final CounterSelect? counter;
 
+  final StockSelect? stock;
+
   @override
   bool get hasSelections =>
       (store?.hasSelections ?? false) ||
       (category?.hasSelections ?? false) ||
-      (counter?.hasSelections ?? false);
+      (counter?.hasSelections ?? false) ||
+      (stock?.hasSelections ?? false);
 
   @override
   void collect(
@@ -656,6 +738,14 @@ class ProductRelations extends RelationsOptions<Product, ProductPartial> {
       final relationContext = scoped.counter;
       counterSelect.collect(relationContext, out, path: relationPath);
     }
+    final stockSelect = stock;
+    if (stockSelect != null && stockSelect.hasSelections) {
+      final relationPath = path == null || path.isEmpty
+          ? 'stock'
+          : '${path}_stock';
+      final relationContext = scoped.stock;
+      stockSelect.collect(relationContext, out, path: relationPath);
+    }
   }
 }
 
@@ -671,12 +761,14 @@ class ProductPartial extends PartialEntity<Product> {
     this.isActive,
     this.createdAt,
     this.updatedAt,
+    this.deletedAt,
     this.storeId,
     this.store,
     this.categoryId,
     this.category,
     this.counterId,
     this.counter,
+    this.stock,
   });
 
   final String? id;
@@ -699,6 +791,8 @@ class ProductPartial extends PartialEntity<Product> {
 
   final DateTime? updatedAt;
 
+  final DateTime? deletedAt;
+
   final String? storeId;
 
   final String? categoryId;
@@ -710,6 +804,8 @@ class ProductPartial extends PartialEntity<Product> {
   final CategoryPartial? category;
 
   final CounterPartial? counter;
+
+  final StockPartial? stock;
 
   @override
   Object? get primaryKeyValue {
@@ -738,6 +834,7 @@ class ProductPartial extends PartialEntity<Product> {
       isActive: isActive!,
       createdAt: createdAt,
       updatedAt: updatedAt,
+      deletedAt: deletedAt,
       storeId: storeId,
       categoryId: categoryId,
       counterId: counterId,
@@ -756,6 +853,7 @@ class ProductPartial extends PartialEntity<Product> {
       isActive: isActive,
       createdAt: createdAt,
       updatedAt: updatedAt,
+      deletedAt: deletedAt,
       storeId: storeId,
       categoryId: categoryId,
       counterId: counterId,
@@ -786,9 +884,11 @@ class ProductPartial extends PartialEntity<Product> {
       isActive: isActive!,
       createdAt: createdAt,
       updatedAt: updatedAt,
+      deletedAt: deletedAt,
       store: store?.toEntity(),
       category: category?.toEntity(),
       counter: counter?.toEntity(),
+      stock: stock?.toEntity(),
     );
   }
 
@@ -805,9 +905,11 @@ class ProductPartial extends PartialEntity<Product> {
       if (isActive != null) 'isActive': isActive,
       if (createdAt != null) 'createdAt': createdAt?.toIso8601String(),
       if (updatedAt != null) 'updatedAt': updatedAt?.toIso8601String(),
+      if (deletedAt != null) 'deletedAt': deletedAt?.toIso8601String(),
       if (store != null) 'store': store?.toJson(),
       if (category != null) 'category': category?.toJson(),
       if (counter != null) 'counter': counter?.toJson(),
+      if (stock != null) 'stock': stock?.toJson(),
       if (storeId != null) 'storeId': storeId,
       if (categoryId != null) 'categoryId': categoryId,
       if (counterId != null) 'counterId': counterId,
@@ -826,6 +928,7 @@ class ProductInsertDto implements InsertDto<Product> {
     required this.isActive,
     this.createdAt,
     this.updatedAt,
+    this.deletedAt,
     this.storeId,
     this.categoryId,
     this.counterId,
@@ -849,6 +952,8 @@ class ProductInsertDto implements InsertDto<Product> {
 
   final DateTime? updatedAt;
 
+  final DateTime? deletedAt;
+
   final String? storeId;
 
   final String? categoryId;
@@ -867,6 +972,9 @@ class ProductInsertDto implements InsertDto<Product> {
       'is_active': isActive,
       'created_at': DateTime.now().toIso8601String(),
       'updated_at': DateTime.now().toIso8601String(),
+      'deleted_at': deletedAt is DateTime
+          ? (deletedAt as DateTime).toIso8601String()
+          : deletedAt?.toString(),
       if (storeId != null) 'store_id': storeId,
       if (categoryId != null) 'category_id': categoryId,
       if (counterId != null) 'counter_id': counterId,
@@ -887,6 +995,7 @@ class ProductInsertDto implements InsertDto<Product> {
     bool? isActive,
     DateTime? createdAt,
     DateTime? updatedAt,
+    DateTime? deletedAt,
     String? storeId,
     String? categoryId,
     String? counterId,
@@ -901,6 +1010,7 @@ class ProductInsertDto implements InsertDto<Product> {
       isActive: isActive ?? this.isActive,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
       storeId: storeId ?? this.storeId,
       categoryId: categoryId ?? this.categoryId,
       counterId: counterId ?? this.counterId,
@@ -919,6 +1029,7 @@ class ProductUpdateDto implements UpdateDto<Product> {
     this.isActive,
     this.createdAt,
     this.updatedAt,
+    this.deletedAt,
     this.storeId,
     this.categoryId,
     this.counterId,
@@ -942,6 +1053,8 @@ class ProductUpdateDto implements UpdateDto<Product> {
 
   final DateTime? updatedAt;
 
+  final DateTime? deletedAt;
+
   final String? storeId;
 
   final String? categoryId;
@@ -963,6 +1076,10 @@ class ProductUpdateDto implements UpdateDto<Product> {
             ? (createdAt as DateTime).toIso8601String()
             : createdAt?.toString(),
       'updated_at': DateTime.now().toIso8601String(),
+      if (deletedAt != null)
+        'deleted_at': deletedAt is DateTime
+            ? (deletedAt as DateTime).toIso8601String()
+            : deletedAt?.toString(),
       if (storeId != null) 'store_id': storeId,
       if (categoryId != null) 'category_id': categoryId,
       if (counterId != null) 'counter_id': counterId,
@@ -996,9 +1113,11 @@ extension ProductJson on Product {
       'isActive': isActive,
       if (createdAt != null) 'createdAt': createdAt?.toIso8601String(),
       if (updatedAt != null) 'updatedAt': updatedAt?.toIso8601String(),
+      if (deletedAt != null) 'deletedAt': deletedAt?.toIso8601String(),
       if (store != null) 'store': store?.toJson(),
       if (category != null) 'category': category?.toJson(),
       if (counter != null) 'counter': counter?.toJson(),
+      if (stock != null) 'stock': stock?.toJson(),
     };
   }
 }

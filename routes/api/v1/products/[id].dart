@@ -2,8 +2,11 @@ import 'dart:io';
 
 import 'package:dart_frog/dart_frog.dart';
 import 'package:loxia/loxia.dart';
+import 'package:pos_backend/models/category/category.dart';
+import 'package:pos_backend/models/counter/counter.dart';
 import 'package:pos_backend/models/merchant/merchant.dart';
 import 'package:pos_backend/models/product/product.dart';
+import 'package:pos_backend/models/stock/stock.dart';
 import 'package:pos_backend/utils/db_error_matcher.dart';
 import 'package:pos_backend/utils/json_body_parser.dart';
 import 'package:pos_backend/validators/product_validators.dart';
@@ -13,6 +16,7 @@ Future<Response> onRequest(RequestContext context, String id) async {
   return switch (context.request.method) {
     .get => _getProduct(context, id),
     .patch => _updateProduct(context, id),
+    .delete => _deleteProduct(context, id),
     _ => Response.json(
       statusCode: HttpStatus.methodNotAllowed,
       body: {'status': 'error', 'message': 'Method not allowed.'},
@@ -116,10 +120,13 @@ Future<Response> _updateProduct(RequestContext context, String id) async {
   }
 
   final products = context.read<DataSource>().getRepository<Product>();
+  final categories = context.read<DataSource>().getRepository<Category>();
+  final counters = context.read<DataSource>().getRepository<Counter>();
   final merchant = context.read<Merchant>();
+  Product? product;
 
   try {
-    final product = await products.findOneBy(
+    product = await products.findOneBy(
       where: ProductQuery(
         (p) => p.id.equals(id).and(p.store.merchantId.equals(merchant.id)),
       ),
@@ -138,6 +145,57 @@ Future<Response> _updateProduct(RequestContext context, String id) async {
         'message': 'Unable to verify product at the moment.',
       },
     );
+  }
+  if (categoryId != null) {
+    try {
+      final category = await categories.findOneBy(
+        where: CategoryQuery(
+          (c) => c.id
+              .equals(categoryId)
+              .and(c.store.merchantId.equals(merchant.id)),
+        ),
+      );
+      if (category == null) {
+        return Response.json(
+          statusCode: HttpStatus.notFound,
+          body: {'status': 'error', 'message': 'Category not found for store.'},
+        );
+      }
+    } on Exception {
+      return Response.json(
+        statusCode: HttpStatus.internalServerError,
+        body: {
+          'status': 'error',
+          'message': 'Unable to verify category at the moment.',
+        },
+      );
+    }
+  }
+
+  if (counterId != null) {
+    try {
+      final counter = await counters.findOneBy(
+        where: CounterQuery(
+          (c) => c.id
+              .equals(counterId)
+              .and(c.store.merchantId.equals(merchant.id)),
+        ),
+      );
+      if (counter == null) {
+        return Response.json(
+          statusCode: HttpStatus.notFound,
+          body: {'status': 'error', 'message': 'Counter not found for store.'},
+        );
+      }
+    } on Exception {
+      return Response.json(
+        statusCode: HttpStatus.internalServerError,
+        body: {
+          'status': 'error',
+          'message': 'Unable to verify counter at the moment.',
+        },
+      );
+    }
   }
 
   try {
@@ -178,6 +236,70 @@ Future<Response> _updateProduct(RequestContext context, String id) async {
       body: {
         'status': 'error',
         'message': 'Unable to update product at the moment.',
+      },
+    );
+  }
+}
+
+Future<Response> _deleteProduct(RequestContext context, String id) async {
+  if (!Uuid.isValidUUID(fromString: id)) {
+    return Response.json(
+      statusCode: HttpStatus.badRequest,
+      body: {'status': 'error', 'message': 'Id must be a uuid value.'},
+    );
+  }
+
+  final products = context.read<DataSource>().getRepository<Product>();
+  final stocks = context.read<DataSource>().getRepository<Stock>();
+  final merchant = context.read<Merchant>();
+  Product? product;
+
+  try {
+    product = await products.findOneBy(
+      where: ProductQuery(
+        (p) => p.id.equals(id).and(p.store.merchantId.equals(merchant.id)),
+      ),
+    );
+    if (product == null) {
+      return Response.json(
+        statusCode: HttpStatus.notFound,
+        body: {'status': 'error', 'message': 'Product not found.'},
+      );
+    }
+  } on Exception {
+    return Response.json(
+      statusCode: HttpStatus.internalServerError,
+      body: {
+        'status': 'error',
+        'message': 'Unable to verify product at the moment.',
+      },
+    );
+  }
+  try {
+    final stock = await stocks.findOneBy(
+      where: StockQuery(
+        (s) =>
+            s.productId.equals(id).and(s.store.merchantId.equals(merchant.id)),
+      ),
+    );
+    if (stock != null) {
+      await stocks.deleteEntity(stock);
+    }
+
+    await products.softDeleteEntity(product);
+
+    return Response.json(
+      body: {
+        'status': 'success',
+        'message': 'Product deleted successfully.',
+      },
+    );
+  } on Exception {
+    return Response.json(
+      statusCode: HttpStatus.internalServerError,
+      body: {
+        'status': 'error',
+        'message': 'Unable to delete product at the moment.',
       },
     );
   }
