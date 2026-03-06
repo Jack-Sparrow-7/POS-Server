@@ -71,7 +71,7 @@ final EntityDescriptor<Stock, StockPartial> $StockEntityDescriptor = () {
     relations: const [
       RelationDescriptor(
         fieldName: 'product',
-        type: RelationType.manyToOne,
+        type: RelationType.oneToOne,
         target: Product,
         isOwningSide: true,
         fetch: RelationFetchStrategy.lazy,
@@ -83,7 +83,7 @@ final EntityDescriptor<Stock, StockPartial> $StockEntityDescriptor = () {
           name: 'product_id',
           referencedColumnName: 'id',
           nullable: true,
-          unique: false,
+          unique: true,
         ),
       ),
       RelationDescriptor(

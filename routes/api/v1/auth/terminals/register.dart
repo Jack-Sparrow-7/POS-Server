@@ -67,7 +67,7 @@ Future<Response> onRequest(RequestContext context) async {
       statusCode: HttpStatus.internalServerError,
       body: {
         'status': 'error',
-        'message': 'Unable to verify store at the moment.',
+        'message': 'Unable to check the store right now.',
       },
     );
   }
