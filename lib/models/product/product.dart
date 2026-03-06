@@ -1,6 +1,7 @@
 import 'package:loxia/loxia.dart';
 import 'package:pos_backend/models/category/category.dart';
 import 'package:pos_backend/models/counter/counter.dart';
+import 'package:pos_backend/models/stock/stock.dart';
 import 'package:pos_backend/models/store/store.dart';
 
 part 'product.g.dart';
@@ -19,15 +20,17 @@ class Product extends Entity {
     required this.name,
     required this.basePrice,
     required this.sellingPrice,
-    required this.isActive,
+    this.isActive = true,
     this.description,
     this.sku,
     this.imageUrl,
     this.store,
     this.category,
     this.counter,
+    this.stock,
     this.createdAt,
     this.updatedAt,
+    this.deletedAt,
   });
 
   /// Unique identifier for the product.
@@ -77,6 +80,10 @@ class Product extends Entity {
   @JoinColumn(name: 'counter_id')
   final Counter? counter;
 
+  /// Stock row linked to this product.
+  @OneToOne(on: Stock, mappedBy: 'product')
+  final Stock? stock;
+
   /// Timestamp when the product was created.
   @CreatedAt()
   DateTime? createdAt;
@@ -84,6 +91,10 @@ class Product extends Entity {
   /// Timestamp when the product was last updated.
   @UpdatedAt()
   DateTime? updatedAt;
+
+  /// Timestamp when the product was soft-deleted.
+  @DeletedAt()
+  DateTime? deletedAt;
 
   /// Entity descriptor used by Loxia for metadata and query operations.
   static EntityDescriptor<Product, ProductPartial> get entity =>

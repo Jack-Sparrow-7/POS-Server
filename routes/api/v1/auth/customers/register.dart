@@ -3,12 +3,12 @@ import 'dart:io';
 import 'package:bcrypt/bcrypt.dart';
 import 'package:dart_frog/dart_frog.dart';
 import 'package:loxia/loxia.dart';
-import 'package:pos_backend/models/merchant/merchant.dart';
+import 'package:pos_backend/models/customer/customer.dart';
 import 'package:pos_backend/services/jwt_service.dart';
 import 'package:pos_backend/utils/auth_cookies.dart';
 import 'package:pos_backend/utils/db_error_matcher.dart';
 import 'package:pos_backend/utils/json_body_parser.dart';
-import 'package:pos_backend/validators/merchant_validators.dart';
+import 'package:pos_backend/validators/customer_validators.dart';
 
 Future<Response> onRequest(RequestContext context) async {
   if (context.request.method != .post) {
@@ -22,9 +22,8 @@ Future<Response> onRequest(RequestContext context) async {
   if (parsedBody.errorResponse != null) {
     return parsedBody.errorResponse!;
   }
-  final body = parsedBody.body!;
 
-  final result = MerchantValidators.registerSchema.tryParse(body);
+  final result = CustomerValidators.registerSchema.tryParse(parsedBody.body!);
   if (!result.success) {
     return Response.json(
       statusCode: HttpStatus.badRequest,
@@ -37,36 +36,33 @@ Future<Response> onRequest(RequestContext context) async {
   }
 
   final name = result.value['name'] as String;
-  final businessName = result.value['businessName'] as String;
   final mobileNumber = result.value['mobileNumber'] as String;
   final email = result.value['email'] as String;
   final password = result.value['password'] as String;
 
-  final passwordHash = BCrypt.hashpw(password, BCrypt.gensalt());
-
-  final merchants = context.read<DataSource>().getRepository<Merchant>();
+  final customers = context.read<DataSource>().getRepository<Customer>();
 
   try {
-    final merchant = await merchants.save(
-      MerchantPartial(
+    final customer = await customers.save(
+      CustomerPartial(
         name: name,
-        businessName: businessName,
         mobileNumber: mobileNumber,
         email: email,
-        passwordHash: passwordHash,
+        passwordHash: BCrypt.hashpw(password, BCrypt.gensalt()),
         isActive: true,
         tokenVersion: 0,
       ),
     );
+
     final token = JwtService.generateAccessToken(
-      userId: merchant.id,
-      type: 'merchant',
-      tokenVersion: merchant.tokenVersion,
+      userId: customer.id,
+      type: 'customer',
+      tokenVersion: customer.tokenVersion,
     );
     final refreshToken = JwtService.generateRefreshToken(
-      userId: merchant.id,
-      type: 'merchant',
-      tokenVersion: merchant.tokenVersion,
+      userId: customer.id,
+      type: 'customer',
+      tokenVersion: customer.tokenVersion,
     );
 
     final setCookieHeader = buildAuthSetCookieHeaders(
@@ -81,22 +77,21 @@ Future<Response> onRequest(RequestContext context) async {
         'token': token,
         'refreshToken': refreshToken,
         'user': {
-          'id': merchant.id,
-          'name': merchant.name,
-          'businessName': merchant.businessName,
-          'mobileNumber': merchant.mobileNumber,
-          'email': merchant.email,
-          'isActive': merchant.isActive,
-          'tokenVersion': merchant.tokenVersion,
-          'createdAt': merchant.createdAt?.toIso8601String(),
-          'updatedAt': merchant.updatedAt?.toIso8601String(),
+          'id': customer.id,
+          'name': customer.name,
+          'mobileNumber': customer.mobileNumber,
+          'email': customer.email,
+          'isActive': customer.isActive,
+          'tokenVersion': customer.tokenVersion,
+          'createdAt': customer.createdAt?.toIso8601String(),
+          'updatedAt': customer.updatedAt?.toIso8601String(),
         },
-        'message': 'Merchant registered successfully.',
+        'message': 'Customer registered successfully.',
       },
       headers: {HttpHeaders.setCookieHeader: setCookieHeader},
     );
   } on Exception catch (e) {
-    if (hasDbConstraint(e, ['merchants_email_key'])) {
+    if (hasDbConstraint(e, ['customers_email_key'])) {
       return Response.json(
         statusCode: HttpStatus.conflict,
         body: {
@@ -105,7 +100,7 @@ Future<Response> onRequest(RequestContext context) async {
         },
       );
     }
-    if (hasDbConstraint(e, ['merchants_mobile_number_key'])) {
+    if (hasDbConstraint(e, ['customers_mobile_number_key'])) {
       return Response.json(
         statusCode: HttpStatus.conflict,
         body: {
@@ -119,7 +114,7 @@ Future<Response> onRequest(RequestContext context) async {
       statusCode: HttpStatus.internalServerError,
       body: {
         'status': 'error',
-        'message': 'Unable to register merchant at the moment.',
+        'message': 'Unable to register customer at the moment.',
       },
     );
   }

@@ -4,7 +4,10 @@ import 'package:pos_backend/middlewares/merchant_auth_middleware.dart';
 Handler middleware(Handler handler) {
   return handler.use(
     merchantAuthMiddleware(
-      applies: (context) async => !context.request.uri.path.endsWith('/login'),
+      applies: (context) async =>
+          !(context.request.uri.path.endsWith('/login') ||
+              context.request.uri.path.endsWith('/refresh') ||
+              context.request.uri.path.endsWith('/logout')),
     ),
   );
 }

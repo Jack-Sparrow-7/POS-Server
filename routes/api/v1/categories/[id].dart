@@ -4,6 +4,7 @@ import 'package:dart_frog/dart_frog.dart';
 import 'package:loxia/loxia.dart';
 import 'package:pos_backend/models/category/category.dart';
 import 'package:pos_backend/models/merchant/merchant.dart';
+import 'package:pos_backend/models/product/product.dart';
 import 'package:pos_backend/utils/db_error_matcher.dart';
 import 'package:pos_backend/utils/json_body_parser.dart';
 import 'package:pos_backend/validators/category_validators.dart';
@@ -14,12 +15,54 @@ Future<Response> onRequest(
   String id,
 ) async {
   return switch (context.request.method) {
+    .get => _getCategory(context, id),
     .put || .patch => _updateCategory(context, id),
+    .delete => _deleteCategory(context, id),
     _ => Response.json(
       statusCode: HttpStatus.methodNotAllowed,
       body: {'status': 'error', 'message': 'Method not allowed.'},
     ),
   };
+}
+
+Future<Response> _getCategory(RequestContext context, String id) async {
+  if (!Uuid.isValidUUID(fromString: id)) {
+    return Response.json(
+      statusCode: HttpStatus.badRequest,
+      body: {'status': 'error', 'message': 'Id must be a uuid value.'},
+    );
+  }
+
+  final categories = context.read<DataSource>().getRepository<Category>();
+  final merchant = context.read<Merchant>();
+
+  try {
+    final category = await categories.findOneBy(
+      where: CategoryQuery(
+        (t) => t.id.equals(id).and(t.store.merchantId.equals(merchant.id)),
+      ),
+    );
+    if (category == null) {
+      return Response.json(
+        statusCode: HttpStatus.notFound,
+        body: {'status': 'error', 'message': 'Category not found.'},
+      );
+    }
+    return Response.json(
+      body: {
+        'status': 'success',
+        'category': category,
+      },
+    );
+  } on Exception {
+    return Response.json(
+      statusCode: HttpStatus.internalServerError,
+      body: {
+        'status': 'error',
+        'message': 'Unable to fetch category at the moment.',
+      },
+    );
+  }
 }
 
 Future<Response> _updateCategory(RequestContext context, String id) async {
@@ -124,6 +167,76 @@ Future<Response> _updateCategory(RequestContext context, String id) async {
       body: {
         'status': 'error',
         'message': 'Unable to update category at the moment.',
+      },
+    );
+  }
+}
+
+Future<Response> _deleteCategory(RequestContext context, String id) async {
+  if (!Uuid.isValidUUID(fromString: id)) {
+    return Response.json(
+      statusCode: HttpStatus.badRequest,
+      body: {'status': 'error', 'message': 'Id must be a uuid value.'},
+    );
+  }
+
+  final categories = context.read<DataSource>().getRepository<Category>();
+  final products = context.read<DataSource>().getRepository<Product>();
+  final merchant = context.read<Merchant>();
+  Category? category;
+
+  try {
+    category = await categories.findOneBy(
+      where: CategoryQuery(
+        (t) => t.id.equals(id).and(t.store.merchantId.equals(merchant.id)),
+      ),
+    );
+    if (category == null) {
+      return Response.json(
+        statusCode: HttpStatus.notFound,
+        body: {'status': 'error', 'message': 'Category not found.'},
+      );
+    }
+  } on Exception {
+    return Response.json(
+      statusCode: HttpStatus.internalServerError,
+      body: {
+        'status': 'error',
+        'message': 'Unable to verify category at the moment.',
+      },
+    );
+  }
+
+  try {
+    final linkedProduct = await products.findOneBy(
+      where: ProductQuery(
+        (p) =>
+            p.categoryId.equals(id).and(p.store.merchantId.equals(merchant.id)),
+      ),
+    );
+    if (linkedProduct != null) {
+      return Response.json(
+        statusCode: HttpStatus.conflict,
+        body: {
+          'status': 'error',
+          'message': 'Category cannot be deleted while products are linked.',
+        },
+      );
+    }
+
+    await categories.softDeleteEntity(category);
+    return Response.json(
+      body: {
+        'status': 'success',
+        'message': 'Category deleted successfully.',
+      },
+    );
+  } on Exception {
+    return Response.json(
+      statusCode: HttpStatus.internalServerError,
+      body: {
+        'status': 'error',
+        'message': 'Unable to delete category at the moment.',
       },
     );
   }

@@ -13,6 +13,7 @@ Future<Merchant?> _authenticateFromToken(
 ) async {
   try {
     final payload = JwtService.verifyToken(token: token);
+    final kind = payload['kind'] as String?;
     final type = payload['type'] as String?;
     final id = payload['sub'] as String?;
     final tokenVersionClaim = payload['tv'];
@@ -21,6 +22,7 @@ Future<Merchant?> _authenticateFromToken(
       final num value => value.toInt(),
       _ => null,
     };
+    if (kind != null && kind != 'access') return null;
     if (type != 'merchant' || id == null) return null;
 
     final merchants = context.read<DataSource>().getRepository<Merchant>();

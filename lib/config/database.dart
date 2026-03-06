@@ -4,6 +4,7 @@ import 'package:loxia/loxia.dart';
 import 'package:pos_backend/config/env.dart';
 import 'package:pos_backend/models/category/category.dart';
 import 'package:pos_backend/models/counter/counter.dart';
+import 'package:pos_backend/models/customer/customer.dart';
 import 'package:pos_backend/models/merchant/merchant.dart';
 import 'package:pos_backend/models/product/product.dart';
 import 'package:pos_backend/models/stock/stock.dart';
@@ -25,6 +26,7 @@ Future<void> initDatabase() async {
       password: Env.dbPassword,
       entities: [
         $MerchantEntityDescriptor,
+        $CustomerEntityDescriptor,
         $StoreEntityDescriptor,
         $TerminalEntityDescriptor,
         $CategoryEntityDescriptor,

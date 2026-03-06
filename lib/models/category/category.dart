@@ -16,10 +16,11 @@ class Category extends Entity {
     required this.id,
     required this.name,
     required this.description,
-    required this.isActive,
+    this.isActive = true,
     this.store,
     this.createdAt,
     this.updatedAt,
+    this.deletedAt,
     this.imageUrl,
   });
 
@@ -55,6 +56,10 @@ class Category extends Entity {
   /// Timestamp when the category was last updated.
   @UpdatedAt()
   DateTime? updatedAt;
+
+  /// Timestamp when the category was soft-deleted.
+  @DeletedAt()
+  DateTime? deletedAt;
 
   /// Entity descriptor used by Loxia for metadata and query operations.
   static EntityDescriptor<Category, CategoryPartial> get entity =>

@@ -17,6 +17,11 @@ class TerminalValidators {
     'terminalCode': string().upperCase().length(12).toUpperCase(),
   });
 
+  /// Validation schema for terminal token refresh payloads.
+  static AcanthisMap<dynamic> get refreshSchema => object({
+    'refreshToken': string().min(10).nullable(),
+  });
+
   /// Validation schema for Terminal updation payloads.
   static AcanthisMap<dynamic> get updateSchema => object({
     'name': string().min(3).max(100).toUpperCase().nullable(),

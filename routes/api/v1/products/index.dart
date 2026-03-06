@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:dart_frog/dart_frog.dart';
 import 'package:loxia/loxia.dart';
+import 'package:pos_backend/models/category/category.dart';
+import 'package:pos_backend/models/counter/counter.dart';
 import 'package:pos_backend/models/merchant/merchant.dart';
 import 'package:pos_backend/models/product/product.dart';
 import 'package:pos_backend/models/stock/stock.dart';
@@ -55,6 +57,8 @@ Future<Response> _createProduct(RequestContext context) async {
   final sku = body['sku'] as String?;
 
   final stores = context.read<DataSource>().getRepository<Store>();
+  final categories = context.read<DataSource>().getRepository<Category>();
+  final counters = context.read<DataSource>().getRepository<Counter>();
   final merchant = context.read<Merchant>();
 
   try {
@@ -79,32 +83,88 @@ Future<Response> _createProduct(RequestContext context) async {
     );
   }
 
-  final products = context.read<DataSource>().getRepository<Product>();
-  final stockRepo = context.read<DataSource>().getRepository<Stock>();
+  try {
+    final category = await categories.findOneBy(
+      where: CategoryQuery(
+        (c) => c.id.equals(categoryId).and(c.storeId.equals(storeId)),
+      ),
+    );
+    if (category == null) {
+      return Response.json(
+        statusCode: HttpStatus.notFound,
+        body: {'status': 'error', 'message': 'Category not found for store.'},
+      );
+    }
+  } on Exception {
+    return Response.json(
+      statusCode: HttpStatus.internalServerError,
+      body: {
+        'status': 'error',
+        'message': 'Unable to verify category at the moment.',
+      },
+    );
+  }
 
   try {
-    final product = await products.save(
-      ProductPartial(
-        name: name,
-        description: description,
-        basePrice: basePrice,
-        sellingPrice: sellingPrice,
-        storeId: storeId,
-        categoryId: categoryId,
-        counterId: counterId,
-        imageUrl: imageUrl,
-        sku: sku,
-        isActive: false,
+    final counter = await counters.findOneBy(
+      where: CounterQuery(
+        (c) => c.id.equals(counterId).and(c.storeId.equals(storeId)),
       ),
     );
-    final stock = await stockRepo.save(
-      StockPartial(
-        productId: product.id,
-        storeId: storeId,
-        quantity: 0,
-        lowStockThreshold: 5,
-      ),
+    if (counter == null) {
+      return Response.json(
+        statusCode: HttpStatus.notFound,
+        body: {'status': 'error', 'message': 'Counter not found for store.'},
+      );
+    }
+  } on Exception {
+    return Response.json(
+      statusCode: HttpStatus.internalServerError,
+      body: {
+        'status': 'error',
+        'message': 'Unable to verify counter at the moment.',
+      },
     );
+  }
+
+  final datasource = context.read<DataSource>();
+
+  try {
+    final (:stock, :product) = await datasource
+        .transaction<({Stock stock, Product product})>(
+          (tx) async {
+            final products = tx.getRepository<Product>();
+            final stocks = tx.getRepository<Stock>();
+
+            final product = await products.save(
+              ProductPartial(
+                name: name,
+                description: description,
+                basePrice: basePrice,
+                sellingPrice: sellingPrice,
+                storeId: storeId,
+                categoryId: categoryId,
+                counterId: counterId,
+                imageUrl: imageUrl,
+                sku: sku,
+                isActive: true,
+              ),
+            );
+
+            final stock = await stocks.save(
+              StockPartial(
+                productId: product.id,
+                storeId: storeId,
+                quantity: 0,
+                lowStockThreshold: 5,
+              ),
+            );
+            return (
+              stock: stock,
+              product: product,
+            );
+          },
+        );
 
     return Response.json(
       statusCode: HttpStatus.created,

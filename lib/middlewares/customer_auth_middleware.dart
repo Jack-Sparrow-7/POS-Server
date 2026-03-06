@@ -2,15 +2,14 @@ import 'dart:io';
 
 import 'package:dart_frog/dart_frog.dart';
 import 'package:dart_frog_auth/dart_frog_auth.dart';
+import 'package:dart_jsonwebtoken/dart_jsonwebtoken.dart';
 import 'package:loxia/loxia.dart';
-import 'package:pos_backend/models/merchant/merchant.dart';
-import 'package:pos_backend/models/store/store.dart';
-import 'package:pos_backend/models/terminal/terminal.dart';
+import 'package:pos_backend/models/customer/customer.dart';
 import 'package:pos_backend/services/jwt_service.dart';
 
 Future<bool> _defaultApplies(RequestContext context) async => true;
 
-Future<Merchant?> _authenticateFromToken(
+Future<Customer?> _authenticateFromToken(
   RequestContext context,
   String token,
 ) async {
@@ -27,47 +26,41 @@ Future<Merchant?> _authenticateFromToken(
     };
 
     if (kind != null && kind != 'access') return null;
-    if (type != 'terminal' || id == null) return null;
+    if (type != 'customer' || id == null) return null;
 
-    final terminals = context.read<DataSource>().getRepository<Terminal>();
-    final terminal = await terminals.findOneBy(
-      relations: const TerminalRelations(
-        store: StoreSelect(
-          relations: StoreRelations(merchant: MerchantSelect()),
-        ),
-      ),
-      where: TerminalQuery((t) => t.id.equals(id)),
+    final customers = context.read<DataSource>().getRepository<Customer>();
+    final customer = await customers.findOneBy(
+      where: CustomerQuery((c) => c.id.equals(id)),
     );
-    if (terminal == null ||
-        !terminal.isActive ||
-        terminal.store == null ||
-        terminal.store!.merchant == null ||
-        !terminal.store!.merchant!.isActive) {
-      return null;
-    }
-    if (tokenVersion != null && tokenVersion != terminal.tokenVersion) {
+
+    if (customer == null || !customer.isActive) return null;
+    if (tokenVersion != null && tokenVersion != customer.tokenVersion) {
       return null;
     }
 
-    return terminal.store!.merchant;
-  } on Exception {
+    return customer;
+  } on JWTException {
     return null;
   }
 }
 
-/// Authenticates terminal requests using Bearer token (mobile/desktop) or
-/// cookie (web). Supports [Authorization: Bearer <token>] and
-/// [Cookie: access_token=<token>]. Use [applies] to control whether
-/// authentication should run for a request.
-Middleware terminalAuthMiddleware({Applies applies = _defaultApplies}) {
+/// Authenticates customer requests using Bearer token (mobile/desktop) or
+/// cookie (web).
+///
+/// Supports both:
+/// - [Authorization: Bearer <token>] for Flutter mobile and desktop
+/// - [Cookie: access_token=<token>] for Flutter web
+///
+/// Use [applies] to control whether authentication runs for a request.
+/// Returns 401 Unauthorized if neither credential is valid.
+Middleware customerAuthMiddleware({Applies applies = _defaultApplies}) {
   return (handler) => (context) async {
     if (!await applies(context)) {
       return handler(context);
     }
 
-    Merchant? merchant;
+    Customer? customer;
 
-    // 1. Try Bearer token first (mobile/desktop)
     String? bearerToken;
     final auth = context.request.headers['Authorization'];
     if (auth != null) {
@@ -77,11 +70,10 @@ Middleware terminalAuthMiddleware({Applies applies = _defaultApplies}) {
       }
     }
     if (bearerToken != null) {
-      merchant = await _authenticateFromToken(context, bearerToken);
+      customer = await _authenticateFromToken(context, bearerToken);
     }
 
-    // 2. Try cookie if Bearer didn't work (web)
-    if (merchant == null) {
+    if (customer == null) {
       final cookieString = context.request.headers['Cookie'];
       if (cookieString != null) {
         final cookies = <String, String>{};
@@ -91,15 +83,16 @@ Middleware terminalAuthMiddleware({Applies applies = _defaultApplies}) {
             cookies[parts[0].trim()] = parts[1].trim();
           }
         }
+
         final token = cookies['access_token'];
         if (token != null) {
-          merchant = await _authenticateFromToken(context, token);
+          customer = await _authenticateFromToken(context, token);
         }
       }
     }
 
-    if (merchant != null) {
-      return handler(context.provide<Merchant>(() => merchant!));
+    if (customer != null) {
+      return handler(context.provide<Customer>(() => customer!));
     }
 
     return Response.json(
