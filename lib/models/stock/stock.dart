@@ -35,9 +35,9 @@ class Stock extends Entity {
   @Column()
   final int lowStockThreshold;
 
-  /// Product this stock entry tracks.
-  @ManyToOne(on: Product)
-  @JoinColumn(name: 'product_id')
+  /// Product this stock entry tracks (one stock row per product).
+  @OneToOne(on: Product)
+  @JoinColumn(name: 'product_id', unique: true)
   final Product? product;
 
   /// Store this stock entry belongs to.

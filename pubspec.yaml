@@ -13,13 +13,13 @@ dependencies:
   dart_frog_auth: ^1.2.2
   dart_jsonwebtoken: ^3.3.2
   dotenv: ^4.2.0
-  loxia: ^0.0.17
+  loxia: ^0.2.1
   postgres: ^3.5.9
   shelf_cors_headers: ^0.1.5
   uuid: ^4.5.3
 
 dev_dependencies:
-  build_runner: ^2.11.1
+  build_runner: ^2.12.2
   dart_frog_lint: ^0.1.2
   mocktail: ^1.0.4
-  test: ^1.25.5
+  test: ^1.30.0
