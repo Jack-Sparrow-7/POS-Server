@@ -115,6 +115,7 @@ CREATE TABLE categories (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid (),
     store_id UUID NOT NULL REFERENCES stores (id) ON DELETE CASCADE,
     name VARCHAR(100) NOT NULL,
+    image_url VARCHAR(500),
     sort_order INTEGER NOT NULL DEFAULT 0,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -122,12 +123,27 @@ CREATE TABLE categories (
     CONSTRAINT categories_name_store_unique UNIQUE (name, store_id)
 );
 
+CREATE TABLE counters (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid (),
+    store_id UUID NOT NULL REFERENCES stores (id) ON DELETE CASCADE,
+    name VARCHAR(100) NOT NULL,
+    description TEXT,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT counters_name_store_unique UNIQUE (name, store_id)
+);
+
+CREATE INDEX idx_counters_store_id ON counters (store_id);
+
 CREATE TABLE menu_items (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid (),
     store_id UUID NOT NULL REFERENCES stores (id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
     description TEXT,
     category_id UUID REFERENCES categories (id) ON DELETE SET NULL,
+    counter_id UUID REFERENCES counters (id) ON DELETE SET NULL,
     cost_price DECIMAL(10, 2) NOT NULL DEFAULT 0,
     price DECIMAL(10, 2) NOT NULL CHECK (price >= 0),
     gst_percent DECIMAL(5, 2) NOT NULL DEFAULT 0 CHECK (gst_percent >= 0),
@@ -186,6 +202,7 @@ CREATE TABLE order_items (
     order_id UUID NOT NULL REFERENCES orders (id) ON DELETE CASCADE,
     menu_item_id UUID REFERENCES menu_items (id) ON DELETE SET NULL,
     item_name VARCHAR(255) NOT NULL,
+    counter_name VARCHAR(100),
     cost_price DECIMAL(10, 2) NOT NULL DEFAULT 0,
     unit_price DECIMAL(10, 2) NOT NULL,
     gst_percent DECIMAL(5, 2) NOT NULL DEFAULT 0,
@@ -272,6 +289,8 @@ CREATE TRIGGER trg_menu_items_updated_at BEFORE UPDATE ON menu_items FOR EACH RO
 CREATE TRIGGER trg_orders_updated_at BEFORE UPDATE ON orders FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 CREATE TRIGGER trg_categories_updated_at BEFORE UPDATE ON categories FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+
+CREATE TRIGGER trg_counters_updated_at BEFORE UPDATE ON counters FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 INSERT INTO
     platform_admins (email, name, password_hash)
