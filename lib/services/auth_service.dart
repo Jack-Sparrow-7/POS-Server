@@ -1,27 +1,8 @@
 import 'package:dart_jsonwebtoken/dart_jsonwebtoken.dart';
 import 'package:pos_server/config/env.dart';
+import 'package:pos_server/exceptions/auth_exception.dart';
+import 'package:pos_server/models/auth_tokens.dart';
 import 'package:pos_server/models/token_payload.dart';
-
-/// Pair of issued access and refresh tokens.
-class AuthTokens {
-  /// Creates an authentication token pair.
-  AuthTokens({required this.accessToken, required this.refreshToken});
-
-  /// Short-lived token used for authenticated API access.
-  final String accessToken;
-
-  /// Long-lived token used to obtain a new access token.
-  final String refreshToken;
-}
-
-/// Exception thrown when authentication token generation or validation fails.
-class AuthException implements Exception {
-  /// Creates an authentication exception with a human-readable message.
-  AuthException({required this.message});
-
-  /// Error message describing the authentication failure.
-  final String message;
-}
 
 /// Handles authentication token generation.
 class AuthService {
