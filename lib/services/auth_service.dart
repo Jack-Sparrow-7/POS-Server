@@ -9,7 +9,7 @@ class AuthService {
   AuthService._();
 
   /// Generates an access token for the provided token payload.
-  String generateAccessToken(TokenPayload payload) {
+  static String generateAccessToken(TokenPayload payload) {
     final jwt = JWT(payload.toMap(), issuer: 'pos-api');
 
     return jwt.sign(
@@ -19,7 +19,7 @@ class AuthService {
   }
 
   /// Generates a refresh token for the provided token payload.
-  String generateRefreshToken(TokenPayload payload) {
+  static String generateRefreshToken(TokenPayload payload) {
     final jwt = JWT({
       'sub': payload.id,
       'role': payload.role.name,
@@ -33,7 +33,7 @@ class AuthService {
   }
 
   /// Generates both access and refresh tokens for the provided payload.
-  AuthTokens generateTokens(TokenPayload payload) {
+  static AuthTokens generateTokens(TokenPayload payload) {
     return AuthTokens(
       accessToken: generateAccessToken(payload),
       refreshToken: generateRefreshToken(payload),
@@ -41,7 +41,7 @@ class AuthService {
   }
 
   /// Verifies an access token and returns its decoded payload.
-  TokenPayload verifyAccessToken(String token) {
+  static TokenPayload verifyAccessToken(String token) {
     try {
       final jwt = JWT.verify(token, SecretKey(Env.jwtSecret));
       final map = jwt.payload as Map<String, dynamic>;
@@ -59,7 +59,7 @@ class AuthService {
   }
 
   /// Verifies a refresh token and returns its decoded payload.
-  TokenPayload verifyRefreshToken(String token) {
+  static TokenPayload verifyRefreshToken(String token) {
     try {
       final jwt = JWT.verify(token, SecretKey(Env.jwtSecret));
       final map = jwt.payload as Map<String, dynamic>;
@@ -77,11 +77,31 @@ class AuthService {
   }
 
   /// Extracts the bearer token value from an authorization header.
-  String? extractBearerToken(String? authorization) {
-    if (authorization == null || !authorization.startsWith('Bearer')) {
+  static String? extractBearerToken(String? authorization) {
+    if (authorization == null) {
       return null;
     }
 
-    return authorization.split(' ')[1];
+    final parts = authorization.split(' ');
+    if (parts.length != 2 || parts.first != 'Bearer' || parts.last.isEmpty) {
+      return null;
+    }
+
+    return parts.last;
+  }
+  /// Extracts the access token value from an cookies.
+  static String? extractAccessTokenFromCookies(String? cookieHeader) {
+    if (cookieHeader == null) {
+      return null;
+    }
+
+    for (final cookie in cookieHeader.split(';')) {
+      final trimmedCookie = cookie.trim();
+      if (trimmedCookie.startsWith('access_token=')) {
+        return trimmedCookie.substring('access_token='.length);
+      }
+    }
+
+    return null;
   }
 }
