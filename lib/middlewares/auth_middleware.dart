@@ -5,6 +5,7 @@ import 'package:pos_server/enums/auth_role.dart';
 import 'package:pos_server/exceptions/auth_exception.dart';
 import 'package:pos_server/models/token_payload.dart';
 import 'package:pos_server/services/auth_service.dart';
+import 'package:pos_server/utils/response_helper.dart';
 
 /// Verifies the incoming access token and adds its payload to the
 /// request context.
@@ -18,14 +19,13 @@ Middleware authMiddleware({List<AuthRole>? allowedRoles}) =>
       final token = bearerToken ?? cookieToken;
 
       if (token == null) {
-        return Response.json(
+        return ResponseHelper.problem(
           statusCode: HttpStatus.unauthorized,
-          body: {
-            'status': 'error',
-            'error': {
-              'code': 'AUTH_TOKEN_MISSING',
-              'message': 'Authentication token not found.',
-            },
+          code: 'AUTH_TOKEN_MISSING',
+          message:
+              'You must provide a valid access token to access this resource.',
+          details: {
+            'path': context.request.uri.toString(),
           },
         );
       }
@@ -34,16 +34,12 @@ Middleware authMiddleware({List<AuthRole>? allowedRoles}) =>
         final tokenPayload = AuthService.verifyAccessToken(token);
 
         if (allowedRoles != null && !allowedRoles.contains(tokenPayload.role)) {
-          return Response.json(
+          return ResponseHelper.problem(
             statusCode: HttpStatus.forbidden,
-            body: {
-              'status': 'error',
-              'error': {
-                'code': 'INSUFFICIENT_PERMISSIONS',
-                'message':
-                    'You do not have the required role to access '
-                    'this resource.',
-              },
+            code: 'INSUFFICIENT_PERMISSIONS',
+            message: 'You do not have permission to access this resource.',
+            details: {
+              'path': context.request.uri.toString(),
             },
           );
         }
@@ -54,14 +50,12 @@ Middleware authMiddleware({List<AuthRole>? allowedRoles}) =>
           ),
         );
       } on AuthException catch (error) {
-        return Response.json(
+        return ResponseHelper.problem(
           statusCode: HttpStatus.unauthorized,
-          body: {
-            'status': 'error',
-            'error': {
-              'code': 'AUTH_TOKEN_INVALID',
-              'message': error.message,
-            },
+          code: 'AUTH_TOKEN_INVALID',
+          message: error.message,
+          details: {
+            'path': context.request.uri.toString(),
           },
         );
       }
