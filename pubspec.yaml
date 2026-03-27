@@ -7,6 +7,7 @@ environment:
   sdk: ">=3.11.0 <4.0.0"
 
 dependencies:
+  acanthis: ^1.5.4
   bcrypt: ^1.2.0
   crypto: ^3.0.7
   dart_frog: ^1.2.6

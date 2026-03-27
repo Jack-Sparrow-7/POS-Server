@@ -6,8 +6,8 @@ class TokenPayload {
   TokenPayload({
     required this.id,
     required this.role,
-    required this.tenantId,
-    required this.storeId,
+    this.tenantId,
+    this.storeId,
   });
 
   /// Creates a token payload from a JSON map.

@@ -21,6 +21,7 @@ Middleware authMiddleware({List<AuthRole>? allowedRoles}) =>
         return Response.json(
           statusCode: HttpStatus.unauthorized,
           body: {
+            'status': 'error',
             'error': {
               'code': 'AUTH_TOKEN_MISSING',
               'message': 'Authentication token not found.',
@@ -36,6 +37,7 @@ Middleware authMiddleware({List<AuthRole>? allowedRoles}) =>
           return Response.json(
             statusCode: HttpStatus.forbidden,
             body: {
+              'status': 'error',
               'error': {
                 'code': 'INSUFFICIENT_PERMISSIONS',
                 'message':
@@ -55,6 +57,7 @@ Middleware authMiddleware({List<AuthRole>? allowedRoles}) =>
         return Response.json(
           statusCode: HttpStatus.unauthorized,
           body: {
+            'status': 'error',
             'error': {
               'code': 'AUTH_TOKEN_INVALID',
               'message': error.message,
