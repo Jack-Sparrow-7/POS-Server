@@ -5,6 +5,7 @@ import 'package:pos_server/exceptions/auth_exception.dart';
 import 'package:pos_server/models/token_payload.dart';
 import 'package:pos_server/services/auth_service.dart';
 import 'package:pos_server/utils/response_helper.dart';
+import 'package:pos_server/validators/auth_validators.dart';
 
 Future<Response> onRequest(RequestContext context) async {
   if (context.request.method == .post) {
@@ -30,7 +31,6 @@ Future<Response> _onPost(RequestContext context) async {
   if (refreshToken == null) {
     try {
       body = await context.request.json() as Map<String, dynamic>;
-      refreshToken = (body['refreshToken'] as String?)?.trim();
     } catch (e) {
       return ResponseHelper.problem(
         statusCode: HttpStatus.badRequest,
@@ -38,9 +38,21 @@ Future<Response> _onPost(RequestContext context) async {
         message: 'The request body must be a valid JSON object.',
       );
     }
+
+    final validationResult = AuthValidators.refreshValidator.tryParse(body);
+    if (!validationResult.success) {
+      return ResponseHelper.problem(
+        statusCode: HttpStatus.badRequest,
+        code: 'INVALID_INPUT',
+        message: 'Invalid refresh payload.',
+        details: validationResult.errors,
+      );
+    }
+
+    refreshToken = (validationResult.value['refreshToken'] as String).trim();
   }
 
-  if (refreshToken == null || refreshToken.isEmpty) {
+  if (refreshToken.isEmpty) {
     return ResponseHelper.problem(
       statusCode: HttpStatus.badRequest,
       code: 'INVALID_INPUT',

@@ -6,6 +6,7 @@ import 'package:pos_server/repositories/internal_user_repository.dart';
 import 'package:pos_server/services/auth_service.dart';
 import 'package:pos_server/utils/password_helper.dart';
 import 'package:pos_server/utils/response_helper.dart';
+import 'package:pos_server/validators/auth_validators.dart';
 import 'package:postgres/postgres.dart';
 
 Future<Response> onRequest(RequestContext context) async {
@@ -32,16 +33,19 @@ Future<Response> _onPost(RequestContext context) async {
     );
   }
 
-  final email = (body['email'] as String?)?.trim();
-  final password = (body['password'] as String?)?.trim();
+  final validationResult = AuthValidators.loginValidator.tryParse(body);
 
-  if (email == null || password == null || email.isEmpty || password.isEmpty) {
+  if (!validationResult.success) {
     return ResponseHelper.problem(
       statusCode: HttpStatus.badRequest,
       code: 'INVALID_INPUT',
-      message: 'Email and password are required.',
+      message: 'Invalid login payload.',
+      details: validationResult.errors,
     );
   }
+
+  final email = (validationResult.value['email'] as String).trim();
+  final password = (validationResult.value['password'] as String).trim();
 
   final internalUserRepo = InternalUserRepository(
     pool: context.read<Pool<String>>(),

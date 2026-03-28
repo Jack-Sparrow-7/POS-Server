@@ -2,7 +2,7 @@ import 'package:acanthis/acanthis.dart';
 
 /// Validators for platform admin operations.
 class PlatformAdminValidators {
-  PlatformAdminValidators._();
+  const PlatformAdminValidators._();
 
   /// Validates the login request body.
   static AcanthisMap<dynamic> get loginValidator => object({
