@@ -3,9 +3,11 @@ import 'package:pos_server/db/database.dart';
 import 'package:postgres/postgres.dart';
 
 Handler middleware(Handler handler) {
-  return handler.use(
-    provider<Pool<String>>(
-      (context) => Database.instance.pool,
-    ),
-  );
+  return handler
+      .use(requestLogger())
+      .use(
+        provider<Pool<String>>(
+          (context) => Database.instance.pool,
+        ),
+      );
 }

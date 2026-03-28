@@ -8,6 +8,7 @@ class ResponseHelper {
 
   /// Creates a standardized success response.
   static Response success({
+    Map<String, Object>? headers,
     int statusCode = HttpStatus.ok,
     String message = 'Success',
     Object? data,
@@ -15,6 +16,7 @@ class ResponseHelper {
   }) {
     return Response.json(
       statusCode: statusCode,
+      headers: headers ?? const <String, Object>{},
       body: {
         'success': true,
         'message': message,

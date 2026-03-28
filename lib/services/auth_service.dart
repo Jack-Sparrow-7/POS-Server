@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:dart_jsonwebtoken/dart_jsonwebtoken.dart';
 import 'package:pos_server/config/env.dart';
 import 'package:pos_server/exceptions/auth_exception.dart';
@@ -89,6 +91,7 @@ class AuthService {
 
     return parts.last;
   }
+
   /// Extracts the access token value from an cookies.
   static String? extractAccessTokenFromCookies(String? cookieHeader) {
     if (cookieHeader == null) {
@@ -103,5 +106,43 @@ class AuthService {
     }
 
     return null;
+  }
+
+  /// Extracts the refresh token value from an cookies.
+  static String? extractRefreshTokenFromCookies(String? cookieHeader) {
+    if (cookieHeader == null) {
+      return null;
+    }
+
+    for (final cookie in cookieHeader.split(';')) {
+      final trimmedCookie = cookie.trim();
+      if (trimmedCookie.startsWith('refresh_token=')) {
+        return trimmedCookie.substring('refresh_token='.length);
+      }
+    }
+
+    return null;
+  }
+
+  /// Builds a Set-Cookie header value for the access token cookie.
+  static String buildAccessTokenCookie(String token) {
+    final cookie = Cookie('access_token', token)
+      ..httpOnly = true
+      ..path = '/'
+      ..sameSite = .lax
+      ..secure = false
+      ..maxAge = Env.jwtExpiryHours * 3600;
+    return cookie.toString();
+  }
+
+  /// Builds a Set-Cookie header value for the refresh token cookie.
+  static String buildRefreshTokenCookie(String token) {
+    final cookie = Cookie('refresh_token', token)
+      ..httpOnly = true
+      ..path = '/'
+      ..sameSite = .lax
+      ..secure = false
+      ..maxAge = Env.jwtRefreshExpiryDays * 24 * 3600;
+    return cookie.toString();
   }
 }
