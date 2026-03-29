@@ -18,3 +18,5 @@ coverage/
 # Local environment configuration
 .env
 .env.*
+
+PRODUCT_WORKFLOW.md

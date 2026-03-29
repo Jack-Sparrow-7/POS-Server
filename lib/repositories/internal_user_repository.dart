@@ -12,7 +12,18 @@ class InternalUserRepository {
   Future<InternalUser?> findByEmail({required String email}) async {
     final result = await _pool.execute(
       Sql.named('''
-        SELECT id, tenant_id, store_id, email, password_hash, role, is_active
+        SELECT
+          id,
+          tenant_id,
+          store_id,
+          name,
+          email,
+          password_hash,
+          role,
+          is_active,
+          last_login_at,
+          created_at,
+          updated_at
         FROM users WHERE email = @email AND role IN ('merchant', 'cashier') LIMIT 1;
       '''),
       parameters: {'email': email},
