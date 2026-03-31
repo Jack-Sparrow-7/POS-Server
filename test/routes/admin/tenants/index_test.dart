@@ -88,7 +88,8 @@ void main() {
           headers: {HttpHeaders.contentTypeHeader: 'application/json'},
           body:
               '{"name":"Acme","email":"owner@acme.com","phone":"9876543210",'
-              '"address":"123 Main St","city":"Chennai","state":"Tamil Nadu","pincode":"600001"}',
+              '''
+              "address":"123 Main St","city":"Chennai","state":"Tamil Nadu","pincode":"600001"}''',
         ),
       );
       when(() => context.read<Pool<String>>()).thenReturn(pool);

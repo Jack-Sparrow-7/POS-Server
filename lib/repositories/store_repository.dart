@@ -3,7 +3,8 @@ import 'package:postgres/postgres.dart';
 
 /// This file is responsible for handling all interactions with the store data.
 class StoreRepository {
-  /// Creates a new instance of [StoreRepository] with the given PostgreSQL connection pool.
+  /// Creates a new instance of [StoreRepository] 
+  /// with the given PostgreSQL connection pool.
   StoreRepository({required Pool<String> pool}) : _pool = pool;
 
   final Pool<String> _pool;

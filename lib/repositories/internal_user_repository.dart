@@ -3,7 +3,8 @@ import 'package:postgres/postgres.dart';
 
 /// A repository for managing internal users (e.g., administrators).
 class InternalUserRepository {
-  /// Creates a new instance of [InternalUserRepository] with the given PostgreSQL connection pool.
+  /// Creates a new instance of [InternalUserRepository] 
+  /// with the given PostgreSQL connection pool.
   InternalUserRepository({required Pool<String> pool}) : _pool = pool;
 
   final Pool<String> _pool;
