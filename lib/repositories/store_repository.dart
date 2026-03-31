@@ -46,6 +46,46 @@ class StoreRepository {
     return result.map((row) => Store.fromRow(row.toColumnMap())).toList();
   }
 
+  /// Returns all stores for a specific tenant.
+  Future<List<Store>> fetchAllForTenant(String tenantId) async {
+    final result = await _pool.execute(
+      Sql.named('''
+        SELECT s.id,
+               s.tenant_id,
+               s.name,
+               s.slug,
+               s.description,
+               s.address,
+               s.city,
+               s.state,
+               s.pincode,
+               s.phone,
+               s.gstin,
+               s.subscription_status,
+               s.subscription_started_at,
+               s.subscription_expires_at,
+               s.trial_expires_at,
+               s.phonepe_client_id,
+               s.phonepe_client_version,
+               s.phonepe_client_secret,
+               s.phonepe_configured,
+               s.gst_enabled,
+               s.is_open,
+               s.is_active,
+               s.created_at,
+               s.updated_at,
+               t.name AS tenant_name
+        FROM stores s
+        INNER JOIN tenants t ON t.id = s.tenant_id
+        WHERE s.tenant_id = @tenantId
+        ORDER BY s.created_at DESC
+      '''),
+      parameters: {'tenantId': tenantId},
+    );
+
+    return result.map((row) => Store.fromRow(row.toColumnMap())).toList();
+  }
+
   /// Finds a store by id for admin detail view.
   Future<Store?> findByIdForAdmin(String id) async {
     final result = await _pool.execute(
