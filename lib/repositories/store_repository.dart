@@ -3,7 +3,7 @@ import 'package:postgres/postgres.dart';
 
 /// This file is responsible for handling all interactions with the store data.
 class StoreRepository {
-  /// Creates a new instance of [StoreRepository] 
+  /// Creates a new instance of [StoreRepository]
   /// with the given PostgreSQL connection pool.
   StoreRepository({required Pool<String> pool}) : _pool = pool;
 
@@ -122,6 +122,57 @@ class StoreRepository {
         LIMIT 1
       '''),
       parameters: {'id': id},
+    );
+
+    if (result.isEmpty) {
+      return null;
+    }
+
+    return Store.fromRow(result.first.toColumnMap());
+  }
+
+  /// Finds a store by id for a specific tenant.
+  Future<Store?> findByIdForTenant({
+    required String id,
+    required String tenantId,
+  }) async {
+    final result = await _pool.execute(
+      Sql.named('''
+        SELECT s.id,
+               s.tenant_id,
+               s.name,
+               s.slug,
+               s.description,
+               s.address,
+               s.city,
+               s.state,
+               s.pincode,
+               s.phone,
+               s.gstin,
+               s.subscription_status,
+               s.subscription_started_at,
+               s.subscription_expires_at,
+               s.trial_expires_at,
+               s.phonepe_client_id,
+               s.phonepe_client_version,
+               s.phonepe_client_secret,
+               s.phonepe_configured,
+               s.gst_enabled,
+               s.is_open,
+               s.is_active,
+               s.created_at,
+               s.updated_at,
+               t.name AS tenant_name
+        FROM stores s
+        INNER JOIN tenants t ON t.id = s.tenant_id
+        WHERE s.id = @id
+          AND s.tenant_id = @tenantId
+        LIMIT 1
+      '''),
+      parameters: {
+        'id': id,
+        'tenantId': tenantId,
+      },
     );
 
     if (result.isEmpty) {
