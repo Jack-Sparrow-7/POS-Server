@@ -20,3 +20,5 @@ coverage/
 .env.*
 
 PRODUCT_WORKFLOW.md
+
+PRODUCT_MASTER_SPEC.md
