@@ -6,7 +6,7 @@ class StoreValidators {
 
   /// Validates the request body for creating a new store.
   static AcanthisMap<dynamic> get createValidator => object({
-    'tenantId': string(),
+    'tenantId': string().uuid(),
     'name': string().min(2).max(255),
     'slug': string().min(2).max(100),
     'description': string().max(1000).nullable(),
