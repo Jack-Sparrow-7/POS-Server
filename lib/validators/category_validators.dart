@@ -14,7 +14,7 @@ class CategoryValidators {
 
   /// Validates the request body for updating a category.
   static AcanthisMap<dynamic> get updateValidator => object({
-    'name': string().uuid().min(2).max(100).nullable(),
+    'name': string().min(2).max(100).nullable(),
     'imageUrl': string().max(500).nullable().nullable(),
     'sortOrder': integer().nullable(),
     'isActive': boolean().nullable(),

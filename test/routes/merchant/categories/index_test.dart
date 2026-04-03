@@ -195,7 +195,8 @@ void main() {
           Uri.parse('http://127.0.0.1/merchant/categories'),
           headers: {HttpHeaders.contentTypeHeader: 'application/json'},
           body:
-              '{"storeId":"550e8400-e29b-41d4-a716-446655440222","name":"Beverages"}',
+              '{"storeId":"550e8400-e29b-41d4-a716-446655440222",'
+              '"name":"Beverages"}',
         ),
       );
       when(() => context.read<TokenPayload>()).thenReturn(
@@ -219,41 +220,46 @@ void main() {
       expect(error['code'], 'STORE_NOT_FOUND');
     });
 
-    test('returns 409 CATEGORY_NAME_EXISTS on duplicate category name', () async {
-      final context = _MockRequestContext();
-      final pool = _MockPool();
+    test(
+      'returns 409 CATEGORY_NAME_EXISTS on duplicate category name',
+      () async {
+        final context = _MockRequestContext();
+        final pool = _MockPool();
 
-      when(() => context.request).thenReturn(
-        Request.post(
-          Uri.parse('http://127.0.0.1/merchant/categories'),
-          headers: {HttpHeaders.contentTypeHeader: 'application/json'},
-          body:
-              '{"storeId":"550e8400-e29b-41d4-a716-446655440222","name":"Beverages"}',
-        ),
-      );
-      when(() => context.read<TokenPayload>()).thenReturn(
-        TokenPayload(
-          id: 'user-id',
-          role: AuthRole.merchant,
-          tenantId: '550e8400-e29b-41d4-a716-446655440111',
-        ),
-      );
-      when(() => context.read<Pool<String>>()).thenReturn(pool);
-      when(
-        () => pool.execute(any(), parameters: any(named: 'parameters')),
-      ).thenThrow(
-        Exception(
-          'duplicate key value violates unique constraint categories_name_store_unique',
-        ),
-      );
+        when(() => context.request).thenReturn(
+          Request.post(
+            Uri.parse('http://127.0.0.1/merchant/categories'),
+            headers: {HttpHeaders.contentTypeHeader: 'application/json'},
+            body:
+                '{"storeId":"550e8400-e29b-41d4-a716-446655440222",'
+                '"name":"Beverages"}',
+          ),
+        );
+        when(() => context.read<TokenPayload>()).thenReturn(
+          TokenPayload(
+            id: 'user-id',
+            role: AuthRole.merchant,
+            tenantId: '550e8400-e29b-41d4-a716-446655440111',
+          ),
+        );
+        when(() => context.read<Pool<String>>()).thenReturn(pool);
+        when(
+          () => pool.execute(any(), parameters: any(named: 'parameters')),
+        ).thenThrow(
+          Exception(
+            'duplicate key value violates unique constraint '
+            'categories_name_store_unique',
+          ),
+        );
 
-      final response = await route.onRequest(context);
+        final response = await route.onRequest(context);
 
-      expect(response.statusCode, HttpStatus.conflict);
-      final body = await response.json() as Map<String, dynamic>;
-      final error = body['error'] as Map<String, dynamic>;
-      expect(error['code'], 'CATEGORY_NAME_EXISTS');
-    });
+        expect(response.statusCode, HttpStatus.conflict);
+        final body = await response.json() as Map<String, dynamic>;
+        final error = body['error'] as Map<String, dynamic>;
+        expect(error['code'], 'CATEGORY_NAME_EXISTS');
+      },
+    );
 
     test('returns 201 with created category on success', () async {
       final context = _MockRequestContext();
@@ -266,7 +272,8 @@ void main() {
           Uri.parse('http://127.0.0.1/merchant/categories'),
           headers: {HttpHeaders.contentTypeHeader: 'application/json'},
           body:
-              '{"storeId":"550e8400-e29b-41d4-a716-446655440222","name":"Beverages","sortOrder":1}',
+              '{"storeId":"550e8400-e29b-41d4-a716-446655440222",'
+              '"name":"Beverages","sortOrder":1}',
         ),
       );
       when(() => context.read<TokenPayload>()).thenReturn(

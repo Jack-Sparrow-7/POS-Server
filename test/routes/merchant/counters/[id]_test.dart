@@ -53,30 +53,33 @@ void main() {
       expect(code, 'INVALID_UUID');
     });
 
-    test('returns 401 UNAUTHORIZED when tenantId is missing in token', () async {
-      final context = _MockRequestContext();
-      when(() => context.request).thenReturn(
-        Request.get(
-          Uri.parse(
-            'http://127.0.0.1/merchant/counters/550e8400-e29b-41d4-a716-446655440000',
+    test(
+      'returns 401 UNAUTHORIZED when tenantId is missing in token',
+      () async {
+        final context = _MockRequestContext();
+        when(() => context.request).thenReturn(
+          Request.get(
+            Uri.parse(
+              'http://127.0.0.1/merchant/counters/550e8400-e29b-41d4-a716-446655440000',
+            ),
           ),
-        ),
-      );
-      when(() => context.read<TokenPayload>()).thenReturn(
-        TokenPayload(id: 'user-id', role: AuthRole.merchant),
-      );
+        );
+        when(() => context.read<TokenPayload>()).thenReturn(
+          TokenPayload(id: 'user-id', role: AuthRole.merchant),
+        );
 
-      final response = await route.onRequest(
-        context,
-        '550e8400-e29b-41d4-a716-446655440000',
-      );
+        final response = await route.onRequest(
+          context,
+          '550e8400-e29b-41d4-a716-446655440000',
+        );
 
-      expect(response.statusCode, HttpStatus.unauthorized);
+        expect(response.statusCode, HttpStatus.unauthorized);
 
-      final body = await response.json() as Map<String, dynamic>;
-      final code = (body['error'] as Map<String, dynamic>)['code'] as String;
-      expect(code, 'UNAUTHORIZED');
-    });
+        final body = await response.json() as Map<String, dynamic>;
+        final code = (body['error'] as Map<String, dynamic>)['code'] as String;
+        expect(code, 'UNAUTHORIZED');
+      },
+    );
 
     test('returns 404 COUNTER_NOT_FOUND when counter does not exist', () async {
       final context = _MockRequestContext();
@@ -296,7 +299,8 @@ void main() {
         () => pool.execute(any(), parameters: any(named: 'parameters')),
       ).thenThrow(
         Exception(
-          'duplicate key value violates unique constraint counters_name_store_unique',
+          'duplicate key value violates unique constraint '
+          'counters_name_store_unique',
         ),
       );
 

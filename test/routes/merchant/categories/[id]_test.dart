@@ -55,67 +55,73 @@ void main() {
       expect(code, 'INVALID_UUID');
     });
 
-    test('returns 401 UNAUTHORIZED when tenantId is missing in token', () async {
-      final context = _MockRequestContext();
-      when(() => context.request).thenReturn(
-        Request.get(
-          Uri.parse(
-            'http://127.0.0.1/merchant/categories/550e8400-e29b-41d4-a716-446655440000',
+    test(
+      'returns 401 UNAUTHORIZED when tenantId is missing in token',
+      () async {
+        final context = _MockRequestContext();
+        when(() => context.request).thenReturn(
+          Request.get(
+            Uri.parse(
+              'http://127.0.0.1/merchant/categories/550e8400-e29b-41d4-a716-446655440000',
+            ),
           ),
-        ),
-      );
-      when(() => context.read<TokenPayload>()).thenReturn(
-        TokenPayload(id: 'user-id', role: AuthRole.merchant),
-      );
+        );
+        when(() => context.read<TokenPayload>()).thenReturn(
+          TokenPayload(id: 'user-id', role: AuthRole.merchant),
+        );
 
-      final response = await route.onRequest(
-        context,
-        '550e8400-e29b-41d4-a716-446655440000',
-      );
+        final response = await route.onRequest(
+          context,
+          '550e8400-e29b-41d4-a716-446655440000',
+        );
 
-      expect(response.statusCode, HttpStatus.unauthorized);
+        expect(response.statusCode, HttpStatus.unauthorized);
 
-      final body = await response.json() as Map<String, dynamic>;
-      final code = (body['error'] as Map<String, dynamic>)['code'] as String;
-      expect(code, 'UNAUTHORIZED');
-    });
+        final body = await response.json() as Map<String, dynamic>;
+        final code = (body['error'] as Map<String, dynamic>)['code'] as String;
+        expect(code, 'UNAUTHORIZED');
+      },
+    );
 
-    test('returns 404 CATEGORY_NOT_FOUND when category does not exist', () async {
-      final context = _MockRequestContext();
-      final pool = _MockPool();
-      final result = _MockResult();
+    test(
+      'returns 404 CATEGORY_NOT_FOUND when category does not exist',
+      () async {
+        final context = _MockRequestContext();
+        final pool = _MockPool();
+        final result = _MockResult();
 
-      when(() => context.request).thenReturn(
-        Request.get(
-          Uri.parse(
-            'http://127.0.0.1/merchant/categories/550e8400-e29b-41d4-a716-446655440000',
+        when(() => context.request).thenReturn(
+          Request.get(
+            Uri.parse(
+              'http://127.0.0.1/merchant/categories/550e8400-e29b-41d4-a716-446655440000',
+            ),
           ),
-        ),
-      );
-      when(() => context.read<TokenPayload>()).thenReturn(
-        TokenPayload(
-          id: 'user-id',
-          role: AuthRole.merchant,
-          tenantId: '550e8400-e29b-41d4-a716-446655440111',
-        ),
-      );
-      when(() => context.read<Pool<String>>()).thenReturn(pool);
-      when(() => result.isEmpty).thenReturn(true);
-      when(
-        () => pool.execute(any(), parameters: any(named: 'parameters')),
-      ).thenAnswer((_) async => result);
+        );
+        when(() => context.read<TokenPayload>()).thenReturn(
+          TokenPayload(
+            id: 'user-id',
+            role: AuthRole.merchant,
+            tenantId: '550e8400-e29b-41d4-a716-446655440111',
+          ),
+        );
+        when(() => context.read<Pool<String>>()).thenReturn(pool);
+        when(() => result.isEmpty).thenReturn(true);
+        when(
+          () => pool.execute(any(), parameters: any(named: 'parameters')),
+        ).thenAnswer((_) async => result);
 
-      final response = await route.onRequest(
-        context,
-        '550e8400-e29b-41d4-a716-446655440000',
-      );
+        final response = await route.onRequest(
+          context,
+          '550e8400-e29b-41d4-a716-446655440000',
+        );
 
-      expect(response.statusCode, HttpStatus.notFound);
+        expect(response.statusCode, HttpStatus.notFound);
 
-      final body = await response.json() as Map<String, dynamic>;
-      final code = (body['error'] as Map<String, dynamic>)['code'] as String;
-      expect(code, 'CATEGORY_NOT_FOUND');
-    });
+        final body = await response.json() as Map<String, dynamic>;
+        final code = (body['error'] as Map<String, dynamic>)['code'] as String;
+        expect(code, 'CATEGORY_NOT_FOUND');
+      },
+    );
 
     test('returns 200 with category on successful fetch', () async {
       final context = _MockRequestContext();
@@ -235,83 +241,90 @@ void main() {
       );
     });
 
-    test('returns 404 CATEGORY_NOT_FOUND when category does not exist', () async {
-      final context = _MockRequestContext();
-      final pool = _MockPool();
-      final result = _MockResult();
+    test(
+      'returns 404 CATEGORY_NOT_FOUND when category does not exist',
+      () async {
+        final context = _MockRequestContext();
+        final pool = _MockPool();
+        final result = _MockResult();
 
-      when(() => context.request).thenReturn(
-        Request.patch(
-          Uri.parse(
-            'http://127.0.0.1/merchant/categories/550e8400-e29b-41d4-a716-446655440000',
+        when(() => context.request).thenReturn(
+          Request.patch(
+            Uri.parse(
+              'http://127.0.0.1/merchant/categories/550e8400-e29b-41d4-a716-446655440000',
+            ),
+            headers: {HttpHeaders.contentTypeHeader: 'application/json'},
+            body: '{"name":"Cold Drinks"}',
           ),
-          headers: {HttpHeaders.contentTypeHeader: 'application/json'},
-          body: '{"name":"Cold Drinks"}',
-        ),
-      );
-      when(() => context.read<TokenPayload>()).thenReturn(
-        TokenPayload(
-          id: 'user-id',
-          role: AuthRole.merchant,
-          tenantId: '550e8400-e29b-41d4-a716-446655440111',
-        ),
-      );
-      when(() => context.read<Pool<String>>()).thenReturn(pool);
-      when(() => result.isEmpty).thenReturn(true);
-      when(
-        () => pool.execute(any(), parameters: any(named: 'parameters')),
-      ).thenAnswer((_) async => result);
-
-      final response = await route.onRequest(
-        context,
-        '550e8400-e29b-41d4-a716-446655440000',
-      );
-
-      expect(response.statusCode, HttpStatus.notFound);
-      final body = await response.json() as Map<String, dynamic>;
-      final error = body['error'] as Map<String, dynamic>;
-      expect(error['code'], 'CATEGORY_NOT_FOUND');
-    });
-
-    test('returns 409 CATEGORY_NAME_EXISTS on duplicate category name', () async {
-      final context = _MockRequestContext();
-      final pool = _MockPool();
-
-      when(() => context.request).thenReturn(
-        Request.patch(
-          Uri.parse(
-            'http://127.0.0.1/merchant/categories/550e8400-e29b-41d4-a716-446655440000',
+        );
+        when(() => context.read<TokenPayload>()).thenReturn(
+          TokenPayload(
+            id: 'user-id',
+            role: AuthRole.merchant,
+            tenantId: '550e8400-e29b-41d4-a716-446655440111',
           ),
-          headers: {HttpHeaders.contentTypeHeader: 'application/json'},
-          body: '{"name":"Beverages"}',
-        ),
-      );
-      when(() => context.read<TokenPayload>()).thenReturn(
-        TokenPayload(
-          id: 'user-id',
-          role: AuthRole.merchant,
-          tenantId: '550e8400-e29b-41d4-a716-446655440111',
-        ),
-      );
-      when(() => context.read<Pool<String>>()).thenReturn(pool);
-      when(
-        () => pool.execute(any(), parameters: any(named: 'parameters')),
-      ).thenThrow(
-        Exception(
-          'duplicate key value violates unique constraint categories_name_store_unique',
-        ),
-      );
+        );
+        when(() => context.read<Pool<String>>()).thenReturn(pool);
+        when(() => result.isEmpty).thenReturn(true);
+        when(
+          () => pool.execute(any(), parameters: any(named: 'parameters')),
+        ).thenAnswer((_) async => result);
 
-      final response = await route.onRequest(
-        context,
-        '550e8400-e29b-41d4-a716-446655440000',
-      );
+        final response = await route.onRequest(
+          context,
+          '550e8400-e29b-41d4-a716-446655440000',
+        );
 
-      expect(response.statusCode, HttpStatus.conflict);
-      final body = await response.json() as Map<String, dynamic>;
-      final error = body['error'] as Map<String, dynamic>;
-      expect(error['code'], 'CATEGORY_NAME_EXISTS');
-    });
+        expect(response.statusCode, HttpStatus.notFound);
+        final body = await response.json() as Map<String, dynamic>;
+        final error = body['error'] as Map<String, dynamic>;
+        expect(error['code'], 'CATEGORY_NOT_FOUND');
+      },
+    );
+
+    test(
+      'returns 409 CATEGORY_NAME_EXISTS on duplicate category name',
+      () async {
+        final context = _MockRequestContext();
+        final pool = _MockPool();
+
+        when(() => context.request).thenReturn(
+          Request.patch(
+            Uri.parse(
+              'http://127.0.0.1/merchant/categories/550e8400-e29b-41d4-a716-446655440000',
+            ),
+            headers: {HttpHeaders.contentTypeHeader: 'application/json'},
+            body: '{"name":"Beverages"}',
+          ),
+        );
+        when(() => context.read<TokenPayload>()).thenReturn(
+          TokenPayload(
+            id: 'user-id',
+            role: AuthRole.merchant,
+            tenantId: '550e8400-e29b-41d4-a716-446655440111',
+          ),
+        );
+        when(() => context.read<Pool<String>>()).thenReturn(pool);
+        when(
+          () => pool.execute(any(), parameters: any(named: 'parameters')),
+        ).thenThrow(
+          Exception(
+            'duplicate key value violates unique constraint '
+            'categories_name_store_unique',
+          ),
+        );
+
+        final response = await route.onRequest(
+          context,
+          '550e8400-e29b-41d4-a716-446655440000',
+        );
+
+        expect(response.statusCode, HttpStatus.conflict);
+        final body = await response.json() as Map<String, dynamic>;
+        final error = body['error'] as Map<String, dynamic>;
+        expect(error['code'], 'CATEGORY_NAME_EXISTS');
+      },
+    );
 
     test('returns 200 with updated category on successful update', () async {
       final context = _MockRequestContext();
