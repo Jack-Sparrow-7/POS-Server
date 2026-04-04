@@ -84,76 +84,76 @@ void main() {
     test(
       'returns 404 MENU_ITEM_NOT_FOUND when menu item does not exist',
       () async {
-      final context = _MockRequestContext();
-      final pool = _MockPool();
-      final result = _MockResult();
+        final context = _MockRequestContext();
+        final pool = _MockPool();
+        final result = _MockResult();
 
-      when(() => context.request).thenReturn(
-        Request.delete(
-          Uri.parse(
-            'http://127.0.0.1/merchant/menu_items/550e8400-e29b-41d4-a716-446655440000',
+        when(() => context.request).thenReturn(
+          Request.delete(
+            Uri.parse(
+              'http://127.0.0.1/merchant/menu_items/550e8400-e29b-41d4-a716-446655440000',
+            ),
           ),
-        ),
-      );
-      when(() => context.read<TokenPayload>()).thenReturn(
-        TokenPayload(
-          id: 'user-id',
-          role: AuthRole.merchant,
-          tenantId: '550e8400-e29b-41d4-a716-446655440111',
-        ),
-      );
-      when(() => context.read<Pool<String>>()).thenReturn(pool);
-      when(() => result.affectedRows).thenReturn(0);
-      when(
-        () => pool.execute(any(), parameters: any(named: 'parameters')),
-      ).thenAnswer((_) async => result);
+        );
+        when(() => context.read<TokenPayload>()).thenReturn(
+          TokenPayload(
+            id: 'user-id',
+            role: AuthRole.merchant,
+            tenantId: '550e8400-e29b-41d4-a716-446655440111',
+          ),
+        );
+        when(() => context.read<Pool<String>>()).thenReturn(pool);
+        when(() => result.affectedRows).thenReturn(0);
+        when(
+          () => pool.execute(any(), parameters: any(named: 'parameters')),
+        ).thenAnswer((_) async => result);
 
-      final response = await route.onRequest(
-        context,
-        '550e8400-e29b-41d4-a716-446655440000',
-      );
+        final response = await route.onRequest(
+          context,
+          '550e8400-e29b-41d4-a716-446655440000',
+        );
 
-      expect(response.statusCode, HttpStatus.notFound);
-      final body = await response.json() as Map<String, dynamic>;
-      final error = body['error'] as Map<String, dynamic>;
-      expect(error['code'], 'MENU_ITEM_NOT_FOUND');
+        expect(response.statusCode, HttpStatus.notFound);
+        final body = await response.json() as Map<String, dynamic>;
+        final error = body['error'] as Map<String, dynamic>;
+        expect(error['code'], 'MENU_ITEM_NOT_FOUND');
       },
     );
 
     test(
       'returns 500 MENU_ITEM_DELETE_FAILED on repository exception',
       () async {
-      final context = _MockRequestContext();
-      final pool = _MockPool();
+        final context = _MockRequestContext();
+        final pool = _MockPool();
 
-      when(() => context.request).thenReturn(
-        Request.delete(
-          Uri.parse(
-            'http://127.0.0.1/merchant/menu_items/550e8400-e29b-41d4-a716-446655440000',
+        when(() => context.request).thenReturn(
+          Request.delete(
+            Uri.parse(
+              'http://127.0.0.1/merchant/menu_items/550e8400-e29b-41d4-a716-446655440000',
+            ),
           ),
-        ),
-      );
-      when(() => context.read<TokenPayload>()).thenReturn(
-        TokenPayload(
-          id: 'user-id',
-          role: AuthRole.merchant,
-          tenantId: '550e8400-e29b-41d4-a716-446655440111',
-        ),
-      );
-      when(() => context.read<Pool<String>>()).thenReturn(pool);
-      when(
-        () => pool.execute(any(), parameters: any(named: 'parameters')),
-      ).thenThrow(Exception('db error'));
+        );
+        when(() => context.read<TokenPayload>()).thenReturn(
+          TokenPayload(
+            id: 'user-id',
+            role: AuthRole.merchant,
+            tenantId: '550e8400-e29b-41d4-a716-446655440111',
+          ),
+        );
+        when(() => context.read<Pool<String>>()).thenReturn(pool);
+        when(
+          () => pool.execute(any(), parameters: any(named: 'parameters')),
+        ).thenThrow(Exception('db error'));
 
-      final response = await route.onRequest(
-        context,
-        '550e8400-e29b-41d4-a716-446655440000',
-      );
+        final response = await route.onRequest(
+          context,
+          '550e8400-e29b-41d4-a716-446655440000',
+        );
 
-      expect(response.statusCode, HttpStatus.internalServerError);
-      final body = await response.json() as Map<String, dynamic>;
-      final error = body['error'] as Map<String, dynamic>;
-      expect(error['code'], 'MENU_ITEM_DELETE_FAILED');
+        expect(response.statusCode, HttpStatus.internalServerError);
+        final body = await response.json() as Map<String, dynamic>;
+        final error = body['error'] as Map<String, dynamic>;
+        expect(error['code'], 'MENU_ITEM_DELETE_FAILED');
       },
     );
 
