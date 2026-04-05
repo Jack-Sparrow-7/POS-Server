@@ -81,6 +81,54 @@ void main() {
       expect(error['code'], 'INVALID_INPUT');
     });
 
+    test('returns 400 INVALID_UUID for malformed categoryId', () async {
+      final context = _MockRequestContext();
+      when(() => context.request).thenReturn(
+        Request.get(
+          Uri.parse('http://127.0.0.1/cashier/menu_items?categoryId=bad'),
+        ),
+      );
+      when(() => context.read<TokenPayload>()).thenReturn(
+        TokenPayload(
+          id: 'cashier-id',
+          role: AuthRole.cashier,
+          tenantId: '550e8400-e29b-41d4-a716-446655440111',
+          storeId: '550e8400-e29b-41d4-a716-446655440222',
+        ),
+      );
+
+      final response = await route.onRequest(context);
+
+      expect(response.statusCode, HttpStatus.badRequest);
+      final body = await response.json() as Map<String, dynamic>;
+      final error = body['error'] as Map<String, dynamic>;
+      expect(error['code'], 'INVALID_UUID');
+    });
+
+    test('returns 400 INVALID_UUID for malformed counterId', () async {
+      final context = _MockRequestContext();
+      when(() => context.request).thenReturn(
+        Request.get(
+          Uri.parse('http://127.0.0.1/cashier/menu_items?counterId=bad'),
+        ),
+      );
+      when(() => context.read<TokenPayload>()).thenReturn(
+        TokenPayload(
+          id: 'cashier-id',
+          role: AuthRole.cashier,
+          tenantId: '550e8400-e29b-41d4-a716-446655440111',
+          storeId: '550e8400-e29b-41d4-a716-446655440222',
+        ),
+      );
+
+      final response = await route.onRequest(context);
+
+      expect(response.statusCode, HttpStatus.badRequest);
+      final body = await response.json() as Map<String, dynamic>;
+      final error = body['error'] as Map<String, dynamic>;
+      expect(error['code'], 'INVALID_UUID');
+    });
+
     test(
       'returns 500 MENU_ITEMS_FETCH_FAILED on repository exception',
       () async {
@@ -123,7 +171,13 @@ void main() {
       );
 
       when(() => context.request).thenReturn(
-        Request.get(Uri.parse('http://127.0.0.1/cashier/menu_items')),
+        Request.get(
+          Uri.parse(
+            'http://127.0.0.1/cashier/menu_items'
+            '?categoryId=550e8400-e29b-41d4-a716-446655440333'
+            '&counterId=550e8400-e29b-41d4-a716-446655440444',
+          ),
+        ),
       );
       when(() => context.read<TokenPayload>()).thenReturn(
         TokenPayload(

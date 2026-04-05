@@ -6,6 +6,7 @@ import 'package:pos_server/models/token_payload.dart';
 import 'package:pos_server/repositories/menu_item_repository.dart';
 import 'package:pos_server/utils/response_helper.dart';
 import 'package:postgres/postgres.dart';
+import 'package:uuid/uuid.dart';
 
 Future<Response> onRequest(RequestContext context) async {
   return switch (context.request.method) {
@@ -32,7 +33,25 @@ Future<Response> _onGet(RequestContext context) async {
   }
 
   final isAvailableRaw = context.request.uri.queryParameters['isAvailable'];
+  final categoryId = context.request.uri.queryParameters['categoryId'];
+  final counterId = context.request.uri.queryParameters['counterId'];
   bool? isAvailable;
+
+  if (categoryId != null && !Uuid.isValidUUID(fromString: categoryId)) {
+    return ResponseHelper.problem(
+      statusCode: HttpStatus.badRequest,
+      code: 'INVALID_UUID',
+      message: 'Invalid UUID format',
+    );
+  }
+
+  if (counterId != null && !Uuid.isValidUUID(fromString: counterId)) {
+    return ResponseHelper.problem(
+      statusCode: HttpStatus.badRequest,
+      code: 'INVALID_UUID',
+      message: 'Invalid UUID format',
+    );
+  }
 
   if (isAvailableRaw != null) {
     final normalized = isAvailableRaw.toLowerCase();
@@ -61,6 +80,8 @@ Future<Response> _onGet(RequestContext context) async {
     menuItems = await menuItemRepository.fetchAllForTenant(
       tenantId: tenantId,
       storeId: storeId,
+      categoryId: categoryId,
+      counterId: counterId,
       isAvailable: isAvailable,
     );
   } catch (_) {
