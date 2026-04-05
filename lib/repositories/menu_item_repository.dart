@@ -214,6 +214,52 @@ class MenuItemRepository {
     return MenuItem.fromRow(result.first.toColumnMap());
   }
 
+  /// Finds a menu item by id scoped to a tenant and store.
+  Future<MenuItem?> findByIdForStore({
+    required String id,
+    required String tenantId,
+    required String storeId,
+  }) async {
+    final result = await _pool.execute(
+      Sql.named('''
+        SELECT m.id,
+               m.store_id,
+               m.name,
+               m.description,
+               m.category_id,
+               m.counter_id,
+               m.cost_price,
+               m.price,
+               m.gst_percent,
+               m.hsn_code,
+               m.is_available,
+               m.stock_count,
+               m.track_stock,
+               m.sort_order,
+               m.image_url,
+               m.created_at,
+               m.updated_at
+        FROM menu_items m
+        INNER JOIN stores s ON s.id = m.store_id
+        WHERE m.id = @id
+          AND s.tenant_id = @tenantId
+          AND m.store_id = @storeId
+        LIMIT 1
+      '''),
+      parameters: {
+        'id': id,
+        'tenantId': tenantId,
+        'storeId': storeId,
+      },
+    );
+
+    if (result.isEmpty) {
+      return null;
+    }
+
+    return MenuItem.fromRow(result.first.toColumnMap());
+  }
+
   /// Updates a menu item scoped to tenant and returns updated row.
   Future<MenuItem?> updateForTenant({
     required String id,
