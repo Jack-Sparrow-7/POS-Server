@@ -12,50 +12,31 @@ class CategoryRepository {
   Future<List<Category>> fetchAllForTenant({
     required String tenantId,
     String? storeId,
+    bool? isActive,
   }) async {
-    final Result result;
-
-    if (storeId == null) {
-      result = await _pool.execute(
-        Sql.named('''
-          SELECT c.id,
-                 c.store_id,
-                 c.name,
-                 c.image_url,
-                 c.sort_order,
-                 c.is_active,
-                 c.created_at,
-                 c.updated_at
-          FROM categories c
-          INNER JOIN stores s ON s.id = c.store_id
-          WHERE s.tenant_id = @tenantId
-          ORDER BY c.sort_order ASC, c.created_at DESC
-        '''),
-        parameters: {'tenantId': tenantId},
-      );
-    } else {
-      result = await _pool.execute(
-        Sql.named('''
-          SELECT c.id,
-                 c.store_id,
-                 c.name,
-                 c.image_url,
-                 c.sort_order,
-                 c.is_active,
-                 c.created_at,
-                 c.updated_at
-          FROM categories c
-          INNER JOIN stores s ON s.id = c.store_id
-          WHERE s.tenant_id = @tenantId
-            AND c.store_id = @storeId
-          ORDER BY c.sort_order ASC, c.created_at DESC
-        '''),
-        parameters: {
-          'tenantId': tenantId,
-          'storeId': storeId,
-        },
-      );
-    }
+    final result = await _pool.execute(
+      Sql.named('''
+        SELECT c.id,
+               c.store_id,
+               c.name,
+               c.image_url,
+               c.sort_order,
+               c.is_active,
+               c.created_at,
+               c.updated_at
+        FROM categories c
+        INNER JOIN stores s ON s.id = c.store_id
+        WHERE s.tenant_id = @tenantId
+          AND (@storeId IS NULL OR c.store_id = @storeId)
+          AND (@isActive IS NULL OR c.is_active = @isActive)
+        ORDER BY c.sort_order ASC, c.created_at DESC
+      '''),
+      parameters: {
+        'tenantId': tenantId,
+        'storeId': storeId,
+        'isActive': isActive,
+      },
+    );
 
     return result.map((row) => Category.fromRow(row.toColumnMap())).toList();
   }
@@ -124,6 +105,43 @@ class CategoryRepository {
       parameters: {
         'id': id,
         'tenantId': tenantId,
+      },
+    );
+
+    if (result.isEmpty) {
+      return null;
+    }
+
+    return Category.fromRow(result.first.toColumnMap());
+  }
+
+  /// Finds a category by id scoped to a tenant and store.
+  Future<Category?> findByIdForStore({
+    required String id,
+    required String tenantId,
+    required String storeId,
+  }) async {
+    final result = await _pool.execute(
+      Sql.named('''
+        SELECT c.id,
+               c.store_id,
+               c.name,
+               c.image_url,
+               c.sort_order,
+               c.is_active,
+               c.created_at,
+               c.updated_at
+        FROM categories c
+        INNER JOIN stores s ON s.id = c.store_id
+        WHERE c.id = @id
+          AND s.tenant_id = @tenantId
+          AND c.store_id = @storeId
+        LIMIT 1
+      '''),
+      parameters: {
+        'id': id,
+        'tenantId': tenantId,
+        'storeId': storeId,
       },
     );
 
