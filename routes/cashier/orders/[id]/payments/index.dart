@@ -13,6 +13,7 @@ Future<Response> onRequest(
 ) async {
   return switch (context.request.method) {
     .get => _onGet(context, id),
+    .patch => _onPatch(context, id),
     .post => _onPost(context, id),
     _ => ResponseHelper.problem(
       statusCode: HttpStatus.methodNotAllowed,
@@ -97,6 +98,144 @@ Future<Response> _onGet(RequestContext context, String id) async {
 
   return ResponseHelper.success(
     message: 'Payment status fetched successfully.',
+    data: {
+      'payment': payment,
+    },
+  );
+}
+
+Future<Response> _onPatch(RequestContext context, String id) async {
+  if (!Uuid.isValidUUID(fromString: id)) {
+    return ResponseHelper.problem(
+      statusCode: HttpStatus.badRequest,
+      code: 'INVALID_UUID',
+      message: 'Invalid UUID format',
+    );
+  }
+
+  final tokenPayload = context.read<TokenPayload>();
+  final tenantId = tokenPayload.tenantId;
+  final storeId = tokenPayload.storeId;
+
+  if (tenantId == null || storeId == null) {
+    return ResponseHelper.problem(
+      statusCode: HttpStatus.unauthorized,
+      code: 'UNAUTHORIZED',
+      message: 'Tenant or store ID is missing in token payload.',
+    );
+  }
+
+  late final Map<String, dynamic> body;
+  try {
+    body = await context.request.json() as Map<String, dynamic>;
+  } catch (_) {
+    return ResponseHelper.problem(
+      statusCode: HttpStatus.badRequest,
+      code: 'INVALID_JSON',
+      message: 'The request body must be a valid JSON object.',
+    );
+  }
+
+  final status = body['status'];
+  const allowedStatuses = {'pending', 'paid', 'failed', 'refunded'};
+  if (status is! String || !allowedStatuses.contains(status)) {
+    return ResponseHelper.problem(
+      statusCode: HttpStatus.badRequest,
+      code: 'INVALID_INPUT',
+      message: 'Invalid payment sync payload.',
+      details: {
+        'status': ['Must be one of: pending, paid, failed, refunded'],
+      },
+    );
+  }
+
+  final merchantOrderIdRaw = body['merchantOrderId'];
+  if (merchantOrderIdRaw != null && merchantOrderIdRaw is! String) {
+    return ResponseHelper.problem(
+      statusCode: HttpStatus.badRequest,
+      code: 'INVALID_INPUT',
+      message: 'Invalid payment sync payload.',
+      details: {
+        'merchantOrderId': ['Must be a string'],
+      },
+    );
+  }
+  final merchantOrderId = (merchantOrderIdRaw as String?)?.trim();
+  if (merchantOrderId != null && merchantOrderId.isEmpty) {
+    return ResponseHelper.problem(
+      statusCode: HttpStatus.badRequest,
+      code: 'INVALID_INPUT',
+      message: 'Invalid payment sync payload.',
+      details: {
+        'merchantOrderId': ['Must be non-empty when provided'],
+      },
+    );
+  }
+
+  final phonepeOrderId = (body['phonepeOrderId'] as String?)?.trim();
+  final phonepeTransactionId = (body['phonepeTransactionId'] as String?)
+      ?.trim();
+  final phonepeState = (body['phonepeState'] as String?)?.trim();
+  final phonepePaymentMode = (body['phonepePaymentMode'] as String?)?.trim();
+  final rawResponse = body['phonepeRawResponse'];
+  if (rawResponse != null && rawResponse is! Map<String, dynamic>) {
+    return ResponseHelper.problem(
+      statusCode: HttpStatus.badRequest,
+      code: 'INVALID_INPUT',
+      message: 'Invalid payment sync payload.',
+      details: {
+        'phonepeRawResponse': ['Must be an object when provided'],
+      },
+    );
+  }
+
+  final paymentRepository = PaymentRepository(
+    pool: context.read<Pool<String>>(),
+  );
+
+  late final Map<String, dynamic> result;
+  try {
+    result = await paymentRepository.syncStatusForCashierOrder(
+      tenantId: tenantId,
+      storeId: storeId,
+      orderId: id,
+      status: status,
+      merchantOrderId: merchantOrderId,
+      phonepeOrderId: phonepeOrderId,
+      phonepeTransactionId: phonepeTransactionId,
+      phonepeState: phonepeState,
+      phonepePaymentMode: phonepePaymentMode,
+      phonepeRawResponse: rawResponse as Map<String, dynamic>?,
+    );
+  } catch (_) {
+    return ResponseHelper.problem(
+      statusCode: HttpStatus.internalServerError,
+      code: 'PAYMENT_STATUS_SYNC_FAILED',
+      message: 'Failed to sync payment status.',
+    );
+  }
+
+  final orderExists = result['orderExists'] as bool;
+  final payment = result['payment'] as Map<String, dynamic>?;
+
+  if (!orderExists) {
+    return ResponseHelper.problem(
+      statusCode: HttpStatus.notFound,
+      code: 'ORDER_NOT_FOUND',
+      message: 'Order not found.',
+    );
+  }
+
+  if (payment == null) {
+    return ResponseHelper.problem(
+      statusCode: HttpStatus.notFound,
+      code: 'PAYMENT_NOT_FOUND',
+      message: 'Payment not found for this order.',
+    );
+  }
+
+  return ResponseHelper.success(
+    message: 'Payment status synced successfully.',
     data: {
       'payment': payment,
     },
