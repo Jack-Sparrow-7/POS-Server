@@ -55,6 +55,56 @@ class PaymentRepository {
       final paymentId = targetMap['id'] as String;
       final orderId = targetMap['order_id'] as String;
 
+      final existingStateResult = await tx.execute(
+        Sql.named('''
+          SELECT status,
+                 phonepe_order_id,
+                 phonepe_transaction_id,
+                 phonepe_state,
+                 phonepe_payment_mode,
+                 initiated_at,
+                 paid_at,
+                 failed_at,
+                 refunded_at,
+                 amount,
+                 store_id,
+                 merchant_order_id
+          FROM payments
+          WHERE id = @paymentId
+          LIMIT 1
+        '''),
+        parameters: {'paymentId': paymentId},
+      );
+
+      final existingMap = existingStateResult.first.toColumnMap();
+      final existingStatus = existingMap['status'] as String;
+
+      // Idempotency guard: if the incoming state is already applied, return
+      // current snapshot without executing another write.
+      if (existingStatus == status) {
+        return {
+          'id': paymentId,
+          'orderId': orderId,
+          'storeId': existingMap['store_id'] as String,
+          'amount': existingMap['amount'] as num,
+          'status': existingStatus,
+          'merchantOrderId': existingMap['merchant_order_id'] as String,
+          'phonepeOrderId': existingMap['phonepe_order_id'] as String?,
+          'phonepeTransactionId':
+              existingMap['phonepe_transaction_id'] as String?,
+          'phonepeState': existingMap['phonepe_state'] as String?,
+          'phonepePaymentMode': existingMap['phonepe_payment_mode'] as String?,
+          'initiatedAt': (existingMap['initiated_at'] as DateTime)
+              .toIso8601String(),
+          'paidAt': (existingMap['paid_at'] as DateTime?)?.toIso8601String(),
+          'failedAt': (existingMap['failed_at'] as DateTime?)
+              ?.toIso8601String(),
+          'refundedAt': (existingMap['refunded_at'] as DateTime?)
+              ?.toIso8601String(),
+          'isDuplicateEvent': true,
+        };
+      }
+
       final paidAt = status == 'paid' ? DateTime.now().toUtc() : null;
       final failedAt = status == 'failed' ? DateTime.now().toUtc() : null;
       final refundedAt = status == 'refunded' ? DateTime.now().toUtc() : null;
@@ -139,6 +189,7 @@ class PaymentRepository {
         'paidAt': (map['paid_at'] as DateTime?)?.toIso8601String(),
         'failedAt': (map['failed_at'] as DateTime?)?.toIso8601String(),
         'refundedAt': (map['refunded_at'] as DateTime?)?.toIso8601String(),
+        'isDuplicateEvent': false,
       };
     });
   }

@@ -182,5 +182,49 @@ void main() {
         expect(payment['merchantOrderId'], 'MORD-1712400000000-550e8400');
       },
     );
+
+    test(
+      'returns 200 with duplicate-event message when already applied',
+      () async {
+        final context = _MockRequestContext();
+        final pool = _MockPool();
+        when(() => context.request).thenReturn(
+          Request.post(
+            Uri.parse('http://127.0.0.1/webhooks/phonepe/payments'),
+            headers: {HttpHeaders.contentTypeHeader: 'application/json'},
+            body: '{"merchantOrderId":"MORD-1","status":"paid"}',
+          ),
+        );
+        when(() => context.read<Pool<String>>()).thenReturn(pool);
+        when(
+          () => pool.runTx<Map<String, dynamic>?>(any()),
+        ).thenAnswer(
+          (_) async => {
+            'id': '770e8400-e29b-41d4-a716-446655440001',
+            'orderId': '550e8400-e29b-41d4-a716-446655440000',
+            'storeId': '550e8400-e29b-41d4-a716-446655440222',
+            'amount': 165.9,
+            'status': 'paid',
+            'merchantOrderId': 'MORD-1',
+            'phonepeOrderId': null,
+            'phonepeTransactionId': null,
+            'phonepeState': null,
+            'phonepePaymentMode': null,
+            'initiatedAt': '2026-04-06T12:00:00.000Z',
+            'paidAt': '2026-04-06T12:01:00.000Z',
+            'failedAt': null,
+            'refundedAt': null,
+            'isDuplicateEvent': true,
+          },
+        );
+
+        final response = await route.onRequest(context);
+
+        expect(response.statusCode, HttpStatus.ok);
+        final body = await response.json() as Map<String, dynamic>;
+        expect(body['success'], isTrue);
+        expect(body['message'], 'Webhook event already processed.');
+      },
+    );
   });
 }

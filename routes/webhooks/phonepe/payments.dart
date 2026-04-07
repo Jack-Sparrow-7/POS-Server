@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'dart:io';
 
+import 'package:crypto/crypto.dart';
 import 'package:dart_frog/dart_frog.dart';
 import 'package:pos_server/config/env.dart';
 import 'package:pos_server/repositories/payment_repository.dart';
@@ -19,21 +21,29 @@ Future<Response> onRequest(RequestContext context) async {
 }
 
 Future<Response> _onPost(RequestContext context) async {
+  final rawBody = await context.request.body();
+
   final configuredSecret = Env.phonepeWebhookSecret;
   if (configuredSecret != null && configuredSecret.isNotEmpty) {
-    final providedSecret = context.request.headers['x-webhook-secret'];
-    if (providedSecret == null || providedSecret != configuredSecret) {
+    final providedSignature = context.request.headers['x-phonepe-signature'];
+    final expectedSignature = _hmacSha256Hex(rawBody, configuredSecret);
+
+    if (providedSignature == null ||
+        !_constantTimeEquals(
+          providedSignature.trim().toLowerCase(),
+          expectedSignature,
+        )) {
       return ResponseHelper.problem(
         statusCode: HttpStatus.unauthorized,
         code: 'WEBHOOK_UNAUTHORIZED',
-        message: 'Invalid webhook credentials.',
+        message: 'Invalid webhook signature.',
       );
     }
   }
 
   late final Map<String, dynamic> body;
   try {
-    body = await context.request.json() as Map<String, dynamic>;
+    body = jsonDecode(rawBody) as Map<String, dynamic>;
   } catch (_) {
     return ResponseHelper.problem(
       statusCode: HttpStatus.badRequest,
@@ -116,10 +126,32 @@ Future<Response> _onPost(RequestContext context) async {
     );
   }
 
+  final isDuplicateEvent = payment['isDuplicateEvent'] == true;
+
   return ResponseHelper.success(
-    message: 'Webhook processed successfully.',
+    message: isDuplicateEvent
+        ? 'Webhook event already processed.'
+        : 'Webhook processed successfully.',
     data: {
       'payment': payment,
     },
   );
+}
+
+String _hmacSha256Hex(String payload, String secret) {
+  final hmac = Hmac(sha256, utf8.encode(secret));
+  final digest = hmac.convert(utf8.encode(payload));
+  return digest.toString();
+}
+
+bool _constantTimeEquals(String a, String b) {
+  if (a.length != b.length) {
+    return false;
+  }
+
+  var diff = 0;
+  for (var i = 0; i < a.length; i++) {
+    diff |= a.codeUnitAt(i) ^ b.codeUnitAt(i);
+  }
+  return diff == 0;
 }
