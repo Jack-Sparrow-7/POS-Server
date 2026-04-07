@@ -3,7 +3,7 @@ import 'package:dotenv/dotenv.dart';
 /// Exposes environment-backed configuration values for the server.
 class Env {
   const Env._();
-  
+
   static final _env = DotEnv(includePlatformEnvironment: true)..load();
 
   // Database
@@ -37,4 +37,8 @@ class Env {
   /// Refresh token lifetime in days.
   static int get jwtRefreshExpiryDays =>
       int.parse(_env['JWT_REFRESH_EXPIRY_DAYS'] ?? '30');
+
+  // Webhooks
+  /// Optional shared secret for payment provider webhook verification.
+  static String? get phonepeWebhookSecret => _env['PHONEPE_WEBHOOK_SECRET'];
 }

@@ -20,6 +20,287 @@ class PaymentRepository {
 
   final Pool<String> _pool;
 
+  /// Syncs a payment status by merchant order id and propagates it to the
+  /// parent order payment status in a single transaction.
+  ///
+  /// Returns `null` when the merchant order id does not map to a payment.
+  Future<Map<String, dynamic>?> syncStatusByMerchantOrderId({
+    required String merchantOrderId,
+    required String status,
+    String? phonepeOrderId,
+    String? phonepeTransactionId,
+    String? phonepeState,
+    String? phonepePaymentMode,
+    Map<String, dynamic>? phonepeRawResponse,
+  }) {
+    return _pool.runTx((tx) async {
+      final targetResult = await tx.execute(
+        Sql.named('''
+          SELECT p.id,
+                 p.order_id
+          FROM payments p
+          WHERE p.merchant_order_id = @merchantOrderId
+          LIMIT 1
+        '''),
+        parameters: {
+          'merchantOrderId': merchantOrderId,
+        },
+      );
+
+      if (targetResult.isEmpty) {
+        return null;
+      }
+
+      final targetMap = targetResult.first.toColumnMap();
+      final paymentId = targetMap['id'] as String;
+      final orderId = targetMap['order_id'] as String;
+
+      final paidAt = status == 'paid' ? DateTime.now().toUtc() : null;
+      final failedAt = status == 'failed' ? DateTime.now().toUtc() : null;
+      final refundedAt = status == 'refunded' ? DateTime.now().toUtc() : null;
+
+      final updatePaymentResult = await tx.execute(
+        Sql.named('''
+          UPDATE payments
+          SET status = @status,
+              phonepe_order_id = COALESCE(@phonepeOrderId, phonepe_order_id),
+              phonepe_transaction_id = COALESCE(
+                @phonepeTransactionId,
+                phonepe_transaction_id
+              ),
+              phonepe_state = COALESCE(@phonepeState, phonepe_state),
+              phonepe_payment_mode = COALESCE(
+                @phonepePaymentMode,
+                phonepe_payment_mode
+              ),
+              phonepe_raw_response = COALESCE(
+                @phonepeRawResponse,
+                phonepe_raw_response
+              ),
+              paid_at = COALESCE(@paidAt, paid_at),
+              failed_at = COALESCE(@failedAt, failed_at),
+              refunded_at = COALESCE(@refundedAt, refunded_at)
+          WHERE id = @paymentId
+          RETURNING id,
+                    order_id,
+                    store_id,
+                    amount,
+                    status,
+                    merchant_order_id,
+                    phonepe_order_id,
+                    phonepe_transaction_id,
+                    phonepe_state,
+                    phonepe_payment_mode,
+                    initiated_at,
+                    paid_at,
+                    failed_at,
+                    refunded_at
+        '''),
+        parameters: {
+          'status': status,
+          'phonepeOrderId': phonepeOrderId,
+          'phonepeTransactionId': phonepeTransactionId,
+          'phonepeState': phonepeState,
+          'phonepePaymentMode': phonepePaymentMode,
+          'phonepeRawResponse': phonepeRawResponse,
+          'paidAt': paidAt,
+          'failedAt': failedAt,
+          'refundedAt': refundedAt,
+          'paymentId': paymentId,
+        },
+      );
+
+      await tx.execute(
+        Sql.named('''
+          UPDATE orders
+          SET payment_status = @status,
+              updated_at = NOW()
+          WHERE id = @orderId
+        '''),
+        parameters: {
+          'orderId': orderId,
+          'status': status,
+        },
+      );
+
+      final map = updatePaymentResult.first.toColumnMap();
+      return {
+        'id': map['id'] as String,
+        'orderId': map['order_id'] as String,
+        'storeId': map['store_id'] as String,
+        'amount': map['amount'] as num,
+        'status': map['status'] as String,
+        'merchantOrderId': map['merchant_order_id'] as String,
+        'phonepeOrderId': map['phonepe_order_id'] as String?,
+        'phonepeTransactionId': map['phonepe_transaction_id'] as String?,
+        'phonepeState': map['phonepe_state'] as String?,
+        'phonepePaymentMode': map['phonepe_payment_mode'] as String?,
+        'initiatedAt': (map['initiated_at'] as DateTime).toIso8601String(),
+        'paidAt': (map['paid_at'] as DateTime?)?.toIso8601String(),
+        'failedAt': (map['failed_at'] as DateTime?)?.toIso8601String(),
+        'refundedAt': (map['refunded_at'] as DateTime?)?.toIso8601String(),
+      };
+    });
+  }
+
+  /// Syncs a payment status for a cashier-scoped order and propagates it to
+  /// the parent order's payment status.
+  ///
+  /// Returns a map with:
+  /// - `orderExists`: `false` if the scoped order does not exist.
+  /// - `payment`: updated payment payload or `null` when no payment is found.
+  Future<Map<String, dynamic>> syncStatusForCashierOrder({
+    required String tenantId,
+    required String storeId,
+    required String orderId,
+    required String status,
+    String? merchantOrderId,
+    String? phonepeOrderId,
+    String? phonepeTransactionId,
+    String? phonepeState,
+    String? phonepePaymentMode,
+    Map<String, dynamic>? phonepeRawResponse,
+  }) {
+    return _pool.runTx((tx) async {
+      final orderScopeResult = await tx.execute(
+        Sql.named('''
+          SELECT 1
+          FROM orders o
+          INNER JOIN stores s ON s.id = o.store_id
+          WHERE o.id = @orderId
+            AND o.store_id = @storeId
+            AND s.tenant_id = @tenantId
+          LIMIT 1
+        '''),
+        parameters: {
+          'orderId': orderId,
+          'storeId': storeId,
+          'tenantId': tenantId,
+        },
+      );
+
+      if (orderScopeResult.isEmpty) {
+        return {
+          'orderExists': false,
+          'payment': null,
+        };
+      }
+
+      final paymentTargetResult = await tx.execute(
+        Sql.named('''
+          SELECT p.id
+          FROM payments p
+          WHERE p.order_id = @orderId
+            AND (@merchantOrderId IS NULL OR p.merchant_order_id = @merchantOrderId)
+          ORDER BY p.initiated_at DESC, p.id DESC
+          LIMIT 1
+        '''),
+        parameters: {
+          'orderId': orderId,
+          'merchantOrderId': merchantOrderId,
+        },
+      );
+
+      if (paymentTargetResult.isEmpty) {
+        return {
+          'orderExists': true,
+          'payment': null,
+        };
+      }
+
+      final paymentId = paymentTargetResult.first.toColumnMap()['id'] as String;
+
+      final paidAt = status == 'paid' ? DateTime.now().toUtc() : null;
+      final failedAt = status == 'failed' ? DateTime.now().toUtc() : null;
+      final refundedAt = status == 'refunded' ? DateTime.now().toUtc() : null;
+
+      final updatePaymentResult = await tx.execute(
+        Sql.named('''
+          UPDATE payments
+          SET status = @status,
+              phonepe_order_id = COALESCE(@phonepeOrderId, phonepe_order_id),
+              phonepe_transaction_id = COALESCE(
+                @phonepeTransactionId,
+                phonepe_transaction_id
+              ),
+              phonepe_state = COALESCE(@phonepeState, phonepe_state),
+              phonepe_payment_mode = COALESCE(
+                @phonepePaymentMode,
+                phonepe_payment_mode
+              ),
+              phonepe_raw_response = COALESCE(
+                @phonepeRawResponse,
+                phonepe_raw_response
+              ),
+              paid_at = COALESCE(@paidAt, paid_at),
+              failed_at = COALESCE(@failedAt, failed_at),
+              refunded_at = COALESCE(@refundedAt, refunded_at)
+          WHERE id = @paymentId
+          RETURNING id,
+                    order_id,
+                    store_id,
+                    amount,
+                    status,
+                    merchant_order_id,
+                    phonepe_order_id,
+                    phonepe_transaction_id,
+                    phonepe_state,
+                    phonepe_payment_mode,
+                    initiated_at,
+                    paid_at,
+                    failed_at,
+                    refunded_at
+        '''),
+        parameters: {
+          'status': status,
+          'phonepeOrderId': phonepeOrderId,
+          'phonepeTransactionId': phonepeTransactionId,
+          'phonepeState': phonepeState,
+          'phonepePaymentMode': phonepePaymentMode,
+          'phonepeRawResponse': phonepeRawResponse,
+          'paidAt': paidAt,
+          'failedAt': failedAt,
+          'refundedAt': refundedAt,
+          'paymentId': paymentId,
+        },
+      );
+
+      await tx.execute(
+        Sql.named('''
+          UPDATE orders
+          SET payment_status = @status,
+              updated_at = NOW()
+          WHERE id = @orderId
+        '''),
+        parameters: {
+          'orderId': orderId,
+          'status': status,
+        },
+      );
+
+      final map = updatePaymentResult.first.toColumnMap();
+      return {
+        'orderExists': true,
+        'payment': {
+          'id': map['id'] as String,
+          'orderId': map['order_id'] as String,
+          'storeId': map['store_id'] as String,
+          'amount': map['amount'] as num,
+          'status': map['status'] as String,
+          'merchantOrderId': map['merchant_order_id'] as String,
+          'phonepeOrderId': map['phonepe_order_id'] as String?,
+          'phonepeTransactionId': map['phonepe_transaction_id'] as String?,
+          'phonepeState': map['phonepe_state'] as String?,
+          'phonepePaymentMode': map['phonepe_payment_mode'] as String?,
+          'initiatedAt': (map['initiated_at'] as DateTime).toIso8601String(),
+          'paidAt': (map['paid_at'] as DateTime?)?.toIso8601String(),
+          'failedAt': (map['failed_at'] as DateTime?)?.toIso8601String(),
+          'refundedAt': (map['refunded_at'] as DateTime?)?.toIso8601String(),
+        },
+      };
+    });
+  }
+
   /// Fetches a payment status snapshot for a cashier-scoped order.
   ///
   /// When [merchantOrderId] is provided, it fetches that specific payment;
