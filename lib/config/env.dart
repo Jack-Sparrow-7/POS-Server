@@ -41,4 +41,8 @@ class Env {
   // Webhooks
   /// Optional shared secret for payment provider webhook verification.
   static String? get phonepeWebhookSecret => _env['PHONEPE_WEBHOOK_SECRET'];
+
+  /// Allowed webhook event timestamp skew in seconds.
+  static int get phonepeWebhookMaxSkewSeconds =>
+      int.parse(_env['PHONEPE_WEBHOOK_MAX_SKEW_SECONDS'] ?? '300');
 }

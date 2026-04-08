@@ -27,6 +27,9 @@ class PaymentRepository {
   Future<Map<String, dynamic>?> syncStatusByMerchantOrderId({
     required String merchantOrderId,
     required String status,
+    required String webhookEventId,
+    required DateTime webhookEventTimestamp,
+    String? payloadHash,
     String? phonepeOrderId,
     String? phonepeTransactionId,
     String? phonepeState,
@@ -34,6 +37,92 @@ class PaymentRepository {
     Map<String, dynamic>? phonepeRawResponse,
   }) {
     return _pool.runTx((tx) async {
+      final eventInsertResult = await tx.execute(
+        Sql.named('''
+          INSERT INTO webhook_events (
+            provider,
+            event_id,
+            merchant_order_id,
+            event_timestamp,
+            payload_hash
+          )
+          VALUES (
+            'phonepe',
+            @eventId,
+            @merchantOrderId,
+            @eventTimestamp,
+            @payloadHash
+          )
+          ON CONFLICT (event_id) DO NOTHING
+          RETURNING event_id
+        '''),
+        parameters: {
+          'eventId': webhookEventId,
+          'merchantOrderId': merchantOrderId,
+          'eventTimestamp': webhookEventTimestamp,
+          'payloadHash': payloadHash,
+        },
+      );
+
+      if (eventInsertResult.isEmpty) {
+        final replaySnapshot = await tx.execute(
+          Sql.named('''
+            SELECT p.id,
+                   p.order_id,
+                   p.store_id,
+                   p.amount,
+                   p.status,
+                   p.merchant_order_id,
+                   p.phonepe_order_id,
+                   p.phonepe_transaction_id,
+                   p.phonepe_state,
+                   p.phonepe_payment_mode,
+                   p.initiated_at,
+                   p.paid_at,
+                   p.failed_at,
+                   p.refunded_at
+            FROM payments p
+            WHERE p.merchant_order_id = @merchantOrderId
+            LIMIT 1
+          '''),
+          parameters: {
+            'merchantOrderId': merchantOrderId,
+          },
+        );
+
+        if (replaySnapshot.isEmpty) {
+          return {
+            'merchantOrderId': merchantOrderId,
+            'status': status,
+            'isDuplicateEvent': true,
+            'isReplayEvent': true,
+          };
+        }
+
+        final replayMap = replaySnapshot.first.toColumnMap();
+        return {
+          'id': replayMap['id'] as String,
+          'orderId': replayMap['order_id'] as String,
+          'storeId': replayMap['store_id'] as String,
+          'amount': replayMap['amount'] as num,
+          'status': replayMap['status'] as String,
+          'merchantOrderId': replayMap['merchant_order_id'] as String,
+          'phonepeOrderId': replayMap['phonepe_order_id'] as String?,
+          'phonepeTransactionId':
+              replayMap['phonepe_transaction_id'] as String?,
+          'phonepeState': replayMap['phonepe_state'] as String?,
+          'phonepePaymentMode': replayMap['phonepe_payment_mode'] as String?,
+          'initiatedAt': (replayMap['initiated_at'] as DateTime)
+              .toIso8601String(),
+          'paidAt': (replayMap['paid_at'] as DateTime?)?.toIso8601String(),
+          'failedAt': (replayMap['failed_at'] as DateTime?)?.toIso8601String(),
+          'refundedAt': (replayMap['refunded_at'] as DateTime?)
+              ?.toIso8601String(),
+          'isDuplicateEvent': true,
+          'isReplayEvent': true,
+        };
+      }
+
       final targetResult = await tx.execute(
         Sql.named('''
           SELECT p.id,
@@ -48,6 +137,16 @@ class PaymentRepository {
       );
 
       if (targetResult.isEmpty) {
+        await tx.execute(
+          Sql.named('''
+            UPDATE webhook_events
+            SET processing_status = 'failed',
+                processing_error_code = 'PAYMENT_NOT_FOUND',
+                processed_at = NOW()
+            WHERE event_id = @eventId
+          '''),
+          parameters: {'eventId': webhookEventId},
+        );
         return null;
       }
 
@@ -82,6 +181,15 @@ class PaymentRepository {
       // Idempotency guard: if the incoming state is already applied, return
       // current snapshot without executing another write.
       if (existingStatus == status) {
+        await tx.execute(
+          Sql.named('''
+            UPDATE webhook_events
+            SET processing_status = 'processed',
+                processed_at = NOW()
+            WHERE event_id = @eventId
+          '''),
+          parameters: {'eventId': webhookEventId},
+        );
         return {
           'id': paymentId,
           'orderId': orderId,
@@ -102,6 +210,7 @@ class PaymentRepository {
           'refundedAt': (existingMap['refunded_at'] as DateTime?)
               ?.toIso8601String(),
           'isDuplicateEvent': true,
+          'isReplayEvent': false,
         };
       }
 
@@ -173,6 +282,16 @@ class PaymentRepository {
         },
       );
 
+      await tx.execute(
+        Sql.named('''
+          UPDATE webhook_events
+          SET processing_status = 'processed',
+              processed_at = NOW()
+          WHERE event_id = @eventId
+        '''),
+        parameters: {'eventId': webhookEventId},
+      );
+
       final map = updatePaymentResult.first.toColumnMap();
       return {
         'id': map['id'] as String,
@@ -190,6 +309,7 @@ class PaymentRepository {
         'failedAt': (map['failed_at'] as DateTime?)?.toIso8601String(),
         'refundedAt': (map['refunded_at'] as DateTime?)?.toIso8601String(),
         'isDuplicateEvent': false,
+        'isReplayEvent': false,
       };
     });
   }
