@@ -133,6 +133,87 @@ void main() {
       },
     );
 
+    test('accepts payload-wrapped callback schema', () async {
+      final context = _MockRequestContext();
+      final pool = _MockPool();
+      final nowMillis = DateTime.now().toUtc().millisecondsSinceEpoch;
+      when(() => context.request).thenReturn(
+        Request.post(
+          Uri.parse('http://127.0.0.1/webhooks/phonepe/payments'),
+          headers: {
+            HttpHeaders.contentTypeHeader: 'application/json',
+          },
+          body: [
+            '{"payload":{',
+            '"event_id":"evt-payload-1",',
+            '"event_timestamp":$nowMillis,',
+            '"merchant_transaction_id":"MORD-PAYLOAD-1",',
+            '"payment_status":"COMPLETED"',
+            '}}',
+          ].join(),
+        ),
+      );
+      when(() => context.read<Pool<String>>()).thenReturn(pool);
+      when(
+        () => pool.runTx<Map<String, dynamic>?>(any()),
+      ).thenAnswer(
+        (_) async => {
+          'id': '770e8400-e29b-41d4-a716-446655440001',
+          'orderId': '550e8400-e29b-41d4-a716-446655440000',
+          'storeId': '550e8400-e29b-41d4-a716-446655440222',
+          'amount': 165.9,
+          'status': 'paid',
+          'merchantOrderId': 'MORD-PAYLOAD-1',
+          'phonepeOrderId': null,
+          'phonepeTransactionId': null,
+          'phonepeState': null,
+          'phonepePaymentMode': null,
+          'initiatedAt': '2026-04-06T12:00:00.000Z',
+          'paidAt': '2026-04-06T12:01:00.000Z',
+          'failedAt': null,
+          'refundedAt': null,
+        },
+      );
+
+      final response = await route.onRequest(context);
+
+      expect(response.statusCode, HttpStatus.ok);
+      final body = await response.json() as Map<String, dynamic>;
+      expect(body['success'], isTrue);
+    });
+
+    test(
+      'returns 400 INVALID_INPUT for payload-wrapped non-object raw response',
+      () async {
+        final context = _MockRequestContext();
+        final nowMillis = DateTime.now().toUtc().millisecondsSinceEpoch;
+        when(() => context.request).thenReturn(
+          Request.post(
+            Uri.parse('http://127.0.0.1/webhooks/phonepe/payments'),
+            headers: {
+              HttpHeaders.contentTypeHeader: 'application/json',
+            },
+            body: [
+              '{"payload":{',
+              '"event_id":"evt-payload-raw-1",',
+              '"event_timestamp":$nowMillis,',
+              '"merchant_transaction_id":"MORD-PAYLOAD-RAW-1",',
+              '"payment_status":"COMPLETED",',
+              '"phonepeRawResponse":"invalid"',
+              '}}',
+            ].join(),
+          ),
+        );
+
+        final response = await route.onRequest(context);
+
+        expect(response.statusCode, HttpStatus.badRequest);
+        final body = await response.json() as Map<String, dynamic>;
+        final error = body['error'] as Map<String, dynamic>;
+        expect(error['code'], 'INVALID_INPUT');
+      },
+    );
+
     test('returns 400 INVALID_INPUT when event timestamp is invalid', () async {
       final context = _MockRequestContext();
       when(() => context.request).thenReturn(
@@ -344,6 +425,37 @@ void main() {
       },
     );
 
+    test(
+      'returns 401 WEBHOOK_UNAUTHORIZED for empty sha256 signature',
+      () async {
+        Env.overrideForTesting('PHONEPE_WEBHOOK_SECRET', 'test-secret');
+
+        final context = _MockRequestContext();
+        when(() => context.request).thenReturn(
+          Request.post(
+            Uri.parse('http://127.0.0.1/webhooks/phonepe/payments'),
+            headers: {
+              HttpHeaders.contentTypeHeader: 'application/json',
+              'x-phonepe-event-id': 'evt-1',
+              'x-phonepe-event-timestamp': DateTime.now()
+                  .toUtc()
+                  .millisecondsSinceEpoch
+                  .toString(),
+              'x-phonepe-signature': 'sha256= ',
+            },
+            body: '{"merchantOrderId":"MORD-1","status":"paid"}',
+          ),
+        );
+
+        final response = await route.onRequest(context);
+
+        expect(response.statusCode, HttpStatus.unauthorized);
+        final body = await response.json() as Map<String, dynamic>;
+        final error = body['error'] as Map<String, dynamic>;
+        expect(error['code'], 'WEBHOOK_UNAUTHORIZED');
+      },
+    );
+
     test('accepts webhook when signature is valid', () async {
       Env.overrideForTesting('PHONEPE_WEBHOOK_SECRET', 'test-secret');
 
@@ -352,6 +464,117 @@ void main() {
       const payload = '{"merchantOrderId":"MORD-1","status":"paid"}';
       const signature =
           '9c3409df989cc27a7574b5af5872d69799457c696bd49d3f293ef84b3f761121';
+
+      when(() => context.request).thenReturn(
+        Request.post(
+          Uri.parse('http://127.0.0.1/webhooks/phonepe/payments'),
+          headers: {
+            HttpHeaders.contentTypeHeader: 'application/json',
+            'x-phonepe-event-id': 'evt-1',
+            'x-phonepe-event-timestamp': DateTime.now()
+                .toUtc()
+                .millisecondsSinceEpoch
+                .toString(),
+            'x-phonepe-signature': signature,
+          },
+          body: payload,
+        ),
+      );
+      when(() => context.read<Pool<String>>()).thenReturn(pool);
+      when(
+        () => pool.runTx<Map<String, dynamic>?>(any()),
+      ).thenAnswer(
+        (_) async => {
+          'id': '770e8400-e29b-41d4-a716-446655440001',
+          'orderId': '550e8400-e29b-41d4-a716-446655440000',
+          'storeId': '550e8400-e29b-41d4-a716-446655440222',
+          'amount': 165.9,
+          'status': 'paid',
+          'merchantOrderId': 'MORD-1',
+          'phonepeOrderId': null,
+          'phonepeTransactionId': null,
+          'phonepeState': null,
+          'phonepePaymentMode': null,
+          'initiatedAt': '2026-04-06T12:00:00.000Z',
+          'paidAt': '2026-04-06T12:01:00.000Z',
+          'failedAt': null,
+          'refundedAt': null,
+        },
+      );
+
+      final response = await route.onRequest(context);
+
+      expect(response.statusCode, HttpStatus.ok);
+      final body = await response.json() as Map<String, dynamic>;
+      expect(body['success'], isTrue);
+    });
+
+    test(
+      'accepts webhook when signature is prefixed with sha256=',
+      () async {
+        Env.overrideForTesting('PHONEPE_WEBHOOK_SECRET', 'test-secret');
+
+        final context = _MockRequestContext();
+        final pool = _MockPool();
+        const payload = '{"merchantOrderId":"MORD-1","status":"paid"}';
+        const signature =
+            'sha256=9c3409df989cc27a7574b5af5872d697'
+            '99457c696bd49d3f293ef84b3f761121';
+
+        when(() => context.request).thenReturn(
+          Request.post(
+            Uri.parse('http://127.0.0.1/webhooks/phonepe/payments'),
+            headers: {
+              HttpHeaders.contentTypeHeader: 'application/json',
+              'x-phonepe-event-id': 'evt-1',
+              'x-phonepe-event-timestamp': DateTime.now()
+                  .toUtc()
+                  .millisecondsSinceEpoch
+                  .toString(),
+              'x-phonepe-signature': signature,
+            },
+            body: payload,
+          ),
+        );
+        when(() => context.read<Pool<String>>()).thenReturn(pool);
+        when(
+          () => pool.runTx<Map<String, dynamic>?>(any()),
+        ).thenAnswer(
+          (_) async => {
+            'id': '770e8400-e29b-41d4-a716-446655440001',
+            'orderId': '550e8400-e29b-41d4-a716-446655440000',
+            'storeId': '550e8400-e29b-41d4-a716-446655440222',
+            'amount': 165.9,
+            'status': 'paid',
+            'merchantOrderId': 'MORD-1',
+            'phonepeOrderId': null,
+            'phonepeTransactionId': null,
+            'phonepeState': null,
+            'phonepePaymentMode': null,
+            'initiatedAt': '2026-04-06T12:00:00.000Z',
+            'paidAt': '2026-04-06T12:01:00.000Z',
+            'failedAt': null,
+            'refundedAt': null,
+          },
+        );
+
+        final response = await route.onRequest(context);
+
+        expect(response.statusCode, HttpStatus.ok);
+        final body = await response.json() as Map<String, dynamic>;
+        expect(body['success'], isTrue);
+      },
+    );
+
+    test('accepts webhook when signature hex is uppercase', () async {
+      Env.overrideForTesting('PHONEPE_WEBHOOK_SECRET', 'test-secret');
+
+      final context = _MockRequestContext();
+      final pool = _MockPool();
+      const payload = '{"merchantOrderId":"MORD-1","status":"paid"}';
+      const signature =
+          '9C3409DF989CC27A7574B5AF5872D697'
+          '99457C696BD49D3F293EF84B3F761121';
 
       when(() => context.request).thenReturn(
         Request.post(

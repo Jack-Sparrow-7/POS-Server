@@ -32,10 +32,11 @@ Future<Response> _onPost(RequestContext context) async {
   if (configuredSecret != null && configuredSecret.isNotEmpty) {
     final providedSignature = context.request.headers['x-phonepe-signature'];
     final expectedSignature = _hmacSha256Hex(rawBody, configuredSecret);
+    final normalizedSignature = _normalizeSignature(providedSignature);
 
-    if (providedSignature == null ||
+    if (normalizedSignature == null ||
         !_constantTimeEquals(
-          providedSignature.trim().toLowerCase(),
+          normalizedSignature,
           expectedSignature,
         )) {
       return ResponseHelper.problem(
@@ -245,6 +246,26 @@ bool _constantTimeEquals(String a, String b) {
   return diff == 0;
 }
 
+String? _normalizeSignature(String? headerValue) {
+  if (headerValue == null) {
+    return null;
+  }
+
+  final trimmed = headerValue.trim();
+  if (trimmed.isEmpty) {
+    return null;
+  }
+
+  const sha256Prefix = 'sha256=';
+  final lower = trimmed.toLowerCase();
+  if (lower.startsWith(sha256Prefix)) {
+    final stripped = trimmed.substring(sha256Prefix.length).trim();
+    return stripped.isEmpty ? null : stripped.toLowerCase();
+  }
+
+  return lower;
+}
+
 String? _extractEventId(Map<String, dynamic> body) {
   return _extractStringValue(
     body,
@@ -266,17 +287,11 @@ String? _extractEventTimestamp(Map<String, dynamic> body) {
     return direct;
   }
 
-  final nestedData = body['data'];
-  if (nestedData is Map<String, dynamic>) {
-    final nested = _findTimestamp(nestedData, keys);
+  for (final nestedMap in _nestedMaps(body)) {
+    final nested = _findTimestamp(nestedMap, keys);
     if (nested != null) {
       return nested;
     }
-  }
-
-  final nestedPayment = body['payment'];
-  if (nestedPayment is Map<String, dynamic>) {
-    return _findTimestamp(nestedPayment, keys);
   }
 
   return null;
@@ -325,17 +340,11 @@ String? _extractStringValue(
     return direct;
   }
 
-  final nestedData = body['data'];
-  if (nestedData is Map<String, dynamic>) {
-    final nested = _findString(nestedData, keys);
+  for (final nestedMap in _nestedMaps(body)) {
+    final nested = _findString(nestedMap, keys);
     if (nested != null) {
       return nested;
     }
-  }
-
-  final nestedPayment = body['payment'];
-  if (nestedPayment is Map<String, dynamic>) {
-    return _findString(nestedPayment, keys);
   }
 
   return null;
@@ -370,10 +379,28 @@ Object? _extractRawResponse(Map<String, dynamic> body) {
     return direct;
   }
 
-  final data = body['data'];
-  if (data is Map<String, dynamic> && data['phonepeRawResponse'] != null) {
-    return data['phonepeRawResponse'];
+  for (final nestedMap in _nestedMaps(body)) {
+    if (nestedMap['phonepeRawResponse'] != null) {
+      return nestedMap['phonepeRawResponse'];
+    }
   }
 
   return null;
+}
+
+Iterable<Map<String, dynamic>> _nestedMaps(Map<String, dynamic> body) sync* {
+  final data = body['data'];
+  if (data is Map<String, dynamic>) {
+    yield data;
+  }
+
+  final payment = body['payment'];
+  if (payment is Map<String, dynamic>) {
+    yield payment;
+  }
+
+  final payload = body['payload'];
+  if (payload is Map<String, dynamic>) {
+    yield payload;
+  }
 }
